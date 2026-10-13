@@ -1,0 +1,42 @@
+/* Language and theme overlay (shared/js/settings.js); colors come from the page's theme tokens */
+.settings-overlay { position: fixed; top: 10px; right: 10px; z-index: 10; }
+
+.settings-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+}
+.settings-toggle svg { width: 22px; height: 22px; }
+
+.settings-panel {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  width: 260px;
+  max-width: calc(100vw - 20px);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
+}
+.settings-panel[hidden] { display: none; }
+.settings-panel h2 { grid-column: 1 / -1; margin: 0; }
+.settings-panel label { margin: 0; }
+
+/* on narrow screens the side panel is on top: keep its title clear of the button */
+@media (max-width: 760px) {
+  #panel h1 { padding-right: 52px; }
+}

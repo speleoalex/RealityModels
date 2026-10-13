@@ -1,0 +1,144 @@
+:root {
+  --stat: #3a6ea5;
+  --mov: #e07b1a;
+  --plane: #8fb8e8;
+  --plane2: #f3c58a;
+  --cone: #d4b100;
+  --bg: #f7f7f5;
+  --panel: #ffffff;
+  --control: #fafafa;
+  --text: #222;
+  --muted: #666;
+  --border: #ddd;
+  --code: #f0f0f0;
+  --ax-x: #c0392b;
+  --ax-y: #27ae60;
+  --ax-t: #2962ff;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #1b1d22;
+  --panel: #23262d;
+  --control: #2c3038;
+  --text: #e6e6e6;
+  --muted: #a0a3aa;
+  --border: #3a3d45;
+  --code: #30343c;
+  --ax-x: #ef6f5f;
+  --ax-y: #5fd38d;
+  --ax-t: #7ea3ff;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body {
+  display: flex;
+  flex-direction: row;
+}
+
+#panel {
+  width: 340px;
+  flex: 0 0 340px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 18px 24px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+#view {
+  flex: 1 1 auto;
+  height: 100%;
+  min-width: 0;
+  position: relative;
+}
+
+#view canvas { display: block; }
+
+h1 { font-size: 20px; margin: 0 0 6px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 8px; }
+
+.intro { margin: 0 0 6px; line-height: 1.4; }
+.ax-x { color: var(--ax-x); font-weight: 600; }
+.ax-y { color: var(--ax-y); font-weight: 600; }
+.ax-t { color: var(--ax-t); font-weight: 600; }
+
+section { margin-bottom: 4px; }
+
+
+label { display: block; margin: 10px 0 4px; }
+label em { font-style: italic; }
+
+/* touch targets: every control is at least 44px tall */
+input[type=range] { width: 100%; height: 44px; margin: 0; cursor: pointer; }
+input[type=number], select {
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--control);
+  color: var(--text);
+  font: inherit;
+}
+input[type=number] { width: 80px; }
+
+.row { display: flex; gap: 8px; align-items: center; }
+.row input[type=range] { flex: 1 1 auto; }
+
+label.check { display: flex; gap: 10px; align-items: center; min-height: 44px; margin-top: 8px; line-height: 1.35; cursor: pointer; }
+label.check input { width: 22px; height: 22px; margin: 0; flex: 0 0 auto; }
+
+.sub { margin: 4px 0 0 12px; padding-left: 10px; border-left: 2px solid var(--plane2); }
+.hidden { display: none; }
+
+.note { color: var(--muted); font-size: 12px; line-height: 1.4; margin: 6px 0 0; }
+
+.buttons { display: flex; gap: 6px; }
+.buttons button {
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--control);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.buttons button.active { background: var(--stat); color: #fff; border-color: var(--stat); }
+
+:focus-visible { outline: 2px solid var(--mov); outline-offset: 2px; }
+
+#readout { width: 100%; border-collapse: collapse; }
+#readout th, #readout td { padding: 6px 2px; border-bottom: 1px solid var(--border); vertical-align: top; }
+#readout th { text-align: left; font-weight: normal; color: var(--muted); width: 70%; }
+#readout td { text-align: right; font-variant-numeric: tabular-nums; }
+#readout td.hl { color: var(--mov); font-weight: 600; }
+
+.legend ul { list-style: none; padding: 0; margin: 0; }
+.legend li { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.sw { display: inline-block; width: 18px; height: 12px; border-radius: 2px; border: 1px solid rgba(128,128,128,.5); }
+.sw-stat { background: var(--stat); }
+.sw-mov { background: var(--mov); }
+.sw-plane { background: var(--plane); }
+.sw-plane2 { background: var(--plane2); }
+.sw-cone { background: var(--cone); }
+
+code { font-size: 12px; background: var(--code); padding: 1px 4px; border-radius: 3px; }
+
+@media (max-width: 760px) {
+  body { flex-direction: column; }
+  #panel { width: 100%; flex: 0 0 auto; height: auto; max-height: 50%; border-right: 0; border-bottom: 1px solid var(--border); }
+  #view { height: 50%; }
+}

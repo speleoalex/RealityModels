@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Molti mondi interagenti</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="../../shared/css/settings.css">
+</head>
+<body>
+<aside id="panel">
+  <h1 data-i18n="heading"></h1>
+  <p class="intro" data-i18n-html="intro"></p>
+
+  <h2 data-i18n="scenario"></h2>
+  <div class="buttons stack">
+    <button type="button" data-scenario="ground" data-i18n="scGround"></button>
+    <button type="button" data-scenario="free" data-i18n="scFree"></button>
+    <button type="button" data-scenario="collision" data-i18n="scCollision"></button>
+    <button type="button" data-scenario="measure" data-i18n="scMeasure"></button>
+  </div>
+  <p class="note" id="scenarioNote"></p>
+
+  <h2 data-i18n="parameters"></h2>
+  <label id="worldsLabel" for="worlds" data-i18n="worldsLabel"></label>
+  <div class="row">
+    <input type="range" id="worlds" min="1" max="80" step="1" value="20">
+    <input type="number" id="worldsNum" min="1" max="80" step="1" value="20" aria-labelledby="worldsLabel">
+  </div>
+  <label id="omegaLabel" for="omega" data-i18n="omegaLabel"></label>
+  <div class="row">
+    <input type="range" id="omega" min="0.2" max="3" step="0.1" value="1">
+    <input type="number" id="omegaNum" min="0.2" max="3" step="0.1" value="1" aria-labelledby="omegaLabel">
+  </div>
+  <div id="speedGroup" hidden>
+    <label id="speedLabel" for="speed" data-i18n="speedLabel"></label>
+    <div class="row">
+      <input type="range" id="speed" min="0.5" max="6" step="0.5" value="3">
+      <input type="number" id="speedNum" min="0.5" max="6" step="0.5" value="3" aria-labelledby="speedLabel">
+    </div>
+  </div>
+  <div id="deltaGroup" hidden>
+    <label id="deltaLabel" for="delta" data-i18n="deltaLabel"></label>
+    <div class="row">
+      <input type="range" id="delta" min="0.1" max="2" step="0.05" value="0.4">
+      <input type="number" id="deltaNum" min="0.1" max="2" step="0.05" value="0.4" aria-labelledby="deltaLabel">
+    </div>
+    <div class="buttons"><button type="button" id="measureBtn" data-i18n="doMeasure"></button></div>
+    <p class="note" id="measureNote"></p>
+  </div>
+
+  <h2 data-i18n="run"></h2>
+  <div class="buttons">
+    <button type="button" id="play" data-i18n="pause"></button>
+    <button type="button" id="restart" data-i18n="restart"></button>
+  </div>
+
+  <h2 data-i18n="readings"></h2>
+  <table id="readout">
+    <tr><th data-i18n="rWorlds"></th><td id="rWorlds"></td></tr>
+    <tr><th data-i18n="rDx"></th><td id="rDx"></td></tr>
+    <tr><th data-i18n="rDp"></th><td id="rDp"></td></tr>
+    <tr><th data-i18n="rProduct"></th><td id="rProduct"></td></tr>
+    <tr><th data-i18n="rBound"></th><td id="rBound"></td></tr>
+    <tr><th data-i18n="rEnergy"></th><td id="rEnergy"></td></tr>
+    <tr id="rowEnergyExp"><th data-i18n="rEnergyExp"></th><td id="rEnergyExp"></td></tr>
+    <tr id="rowSpread" hidden><th data-i18n="rSpread"></th><td id="rSpread"></td></tr>
+  </table>
+
+  <h2 data-i18n="legend"></h2>
+  <ul class="legend">
+    <li><span class="sw sw-world"></span><span data-i18n="legWorld"></span></li>
+    <li><span class="sw sw-chosen"></span><span data-i18n="legChosen"></span></li>
+    <li><span class="sw sw-discarded"></span><span data-i18n="legDiscarded"></span></li>
+    <li><span class="sw sw-density"></span><span data-i18n="legDensity"></span></li>
+    <li><span class="sw sw-theory"></span><span data-i18n="legTheory"></span></li>
+  </ul>
+  <p class="note" data-i18n-html="docNote"></p>
+</aside>
+
+<main id="view">
+  <div id="graphBox">
+    <span id="graphTitle" class="visually-hidden" data-i18n="graphAria"></span>
+    <canvas id="graph" role="img" aria-labelledby="graphTitle"></canvas>
+    <div id="tooltip" hidden></div>
+  </div>
+</main>
+
+<script src="js/i18n.js"></script>
+
+<script src="../../shared/js/settings.js"></script>
+<script src="js/model.js"></script>
+<script src="js/graph.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

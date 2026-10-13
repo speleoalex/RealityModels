@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Molti mondi interagenti</title>
+<style>
+/* Theme tokens: light on :root, dark for the system preference (unless light is forced) and for the explicit choice */
+:root {
+  --bg: #f7f7f5;
+  --panel: #ffffff;
+  --control: #fafafa;
+  --text: #222;
+  --muted: #666;
+  --border: #ddd;
+  --code: #f0f0f0;
+  --stat: #3a6ea5;
+  --mov: #e07b1a;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --accent: #eb6834;
+  --ramp-1: #cde2fb;
+  --ramp-2: #9ec5f4;
+  --ramp-3: #5598e7;
+  --ramp-4: #2a78d6;
+  --ramp-5: #184f95;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1d22;
+    --panel: #23262d;
+    --control: #2c3038;
+    --text: #e6e6e6;
+    --muted: #a0a3aa;
+    --border: #3a3d45;
+    --code: #30343c;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --accent: #d95926;
+    --ramp-1: #184f95;
+    --ramp-2: #256abf;
+    --ramp-3: #3987e5;
+    --ramp-4: #6da7ec;
+    --ramp-5: #b7d3f6;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1b1d22;
+  --panel: #23262d;
+  --control: #2c3038;
+  --text: #e6e6e6;
+  --muted: #a0a3aa;
+  --border: #3a3d45;
+  --code: #30343c;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --accent: #d95926;
+  --ramp-1: #184f95;
+  --ramp-2: #256abf;
+  --ramp-3: #3987e5;
+  --ramp-4: #6da7ec;
+  --ramp-5: #b7d3f6;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body { display: flex; }
+
+#panel {
+  width: 340px;
+  flex: 0 0 340px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 18px 24px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+#view { flex: 1 1 auto; height: 100%; min-width: 0; position: relative; }
+
+#graphBox { position: absolute; inset: 0; }
+#graphBox canvas { display: block; }
+
+h1 { font-size: 20px; margin: 0 0 8px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 6px; }
+.intro { margin: 0; line-height: 1.45; }
+
+
+label { display: block; margin: 10px 0 4px; }
+
+input[type=range] { width: 100%; height: 44px; margin: 0; cursor: pointer; }
+input[type=number], select {
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--control);
+  color: var(--text);
+  font: inherit;
+}
+input[type=number] { width: 80px; }
+
+.row { display: flex; gap: 8px; align-items: center; }
+.row input[type=range] { flex: 1 1 auto; }
+
+.note { color: var(--muted); font-size: 12px; line-height: 1.4; margin: 6px 0 0; }
+
+.buttons { display: flex; gap: 6px; }
+.buttons.stack { flex-direction: column; }
+.buttons button {
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--control);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.buttons button.active { background: var(--stat); color: #fff; border-color: var(--stat); }
+
+:focus-visible { outline: 2px solid var(--mov); outline-offset: 2px; }
+
+#readout { width: 100%; border-collapse: collapse; }
+#readout th { text-align: left; font-weight: normal; color: var(--muted); width: 70%; }
+#readout td { text-align: right; font-variant-numeric: tabular-nums; }
+#readout th, #readout td { padding: 6px 2px; border-bottom: 1px solid var(--border); }
+
+.legend { list-style: none; margin: 0; padding: 0; }
+.legend li { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.sw { flex: 0 0 auto; display: inline-block; width: 18px; height: 12px; border-radius: 2px; }
+.sw-world { height: 2px; background: var(--accent); }
+.sw-chosen { height: 3px; background: var(--mov); }
+.sw-discarded { height: 2px; background: var(--muted); opacity: .5; }
+.sw-density { background: var(--accent); opacity: .6; }
+.sw-theory { height: 0; border-top: 2px dashed var(--stat); }
+
+code { background: var(--code); padding: 1px 4px; border-radius: 3px; }
+
+#tooltip {
+  position: absolute;
+  pointer-events: none;
+  max-width: 260px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+}
+#tooltip b { display: block; margin-bottom: 4px; }
+#tooltip div { display: flex; justify-content: space-between; gap: 12px; }
+#tooltip div span:first-child { color: var(--muted); }
+#tooltip div span:last-child { font-variant-numeric: tabular-nums; }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 760px) {
+  body { flex-direction: column; }
+  #panel { width: 100%; flex: 0 0 auto; height: auto; max-height: 50%; border-right: 0; border-bottom: 1px solid var(--border); }
+  #view { height: 50%; }
+}
+
+</style>
+<style>
+/* Language and theme overlay (shared/js/settings.js); colors come from the page's theme tokens */
+.settings-overlay { position: fixed; top: 10px; right: 10px; z-index: 10; }
+
+.settings-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+}
+.settings-toggle svg { width: 22px; height: 22px; }
+
+.settings-panel {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  width: 260px;
+  max-width: calc(100vw - 20px);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
+}
+.settings-panel[hidden] { display: none; }
+.settings-panel h2 { grid-column: 1 / -1; margin: 0; }
+.settings-panel label { margin: 0; }
+
+/* on narrow screens the side panel is on top: keep its title clear of the button */
+@media (max-width: 760px) {
+  #panel h1 { padding-right: 52px; }
+}
+
+</style>
+</head>
+<body>
+<aside id="panel">
+  <h1 data-i18n="heading"></h1>
+  <p class="intro" data-i18n-html="intro"></p>
+
+  <h2 data-i18n="scenario"></h2>
+  <div class="buttons stack">
+    <button type="button" data-scenario="ground" data-i18n="scGround"></button>
+    <button type="button" data-scenario="free" data-i18n="scFree"></button>
+    <button type="button" data-scenario="collision" data-i18n="scCollision"></button>
+    <button type="button" data-scenario="measure" data-i18n="scMeasure"></button>
+  </div>
+  <p class="note" id="scenarioNote"></p>
+
+  <h2 data-i18n="parameters"></h2>
+  <label id="worldsLabel" for="worlds" data-i18n="worldsLabel"></label>
+  <div class="row">
+    <input type="range" id="worlds" min="1" max="80" step="1" value="20">
+    <input type="number" id="worldsNum" min="1" max="80" step="1" value="20" aria-labelledby="worldsLabel">
+  </div>
+  <label id="omegaLabel" for="omega" data-i18n="omegaLabel"></label>
+  <div class="row">
+    <input type="range" id="omega" min="0.2" max="3" step="0.1" value="1">
+    <input type="number" id="omegaNum" min="0.2" max="3" step="0.1" value="1" aria-labelledby="omegaLabel">
+  </div>
+  <div id="speedGroup" hidden>
+    <label id="speedLabel" for="speed" data-i18n="speedLabel"></label>
+    <div class="row">
+      <input type="range" id="speed" min="0.5" max="6" step="0.5" value="3">
+      <input type="number" id="speedNum" min="0.5" max="6" step="0.5" value="3" aria-labelledby="speedLabel">
+    </div>
+  </div>
+  <div id="deltaGroup" hidden>
+    <label id="deltaLabel" for="delta" data-i18n="deltaLabel"></label>
+    <div class="row">
+      <input type="range" id="delta" min="0.1" max="2" step="0.05" value="0.4">
+      <input type="number" id="deltaNum" min="0.1" max="2" step="0.05" value="0.4" aria-labelledby="deltaLabel">
+    </div>
+    <div class="buttons"><button type="button" id="measureBtn" data-i18n="doMeasure"></button></div>
+    <p class="note" id="measureNote"></p>
+  </div>
+
+  <h2 data-i18n="run"></h2>
+  <div class="buttons">
+    <button type="button" id="play" data-i18n="pause"></button>
+    <button type="button" id="restart" data-i18n="restart"></button>
+  </div>
+
+  <h2 data-i18n="readings"></h2>
+  <table id="readout">
+    <tr><th data-i18n="rWorlds"></th><td id="rWorlds"></td></tr>
+    <tr><th data-i18n="rDx"></th><td id="rDx"></td></tr>
+    <tr><th data-i18n="rDp"></th><td id="rDp"></td></tr>
+    <tr><th data-i18n="rProduct"></th><td id="rProduct"></td></tr>
+    <tr><th data-i18n="rBound"></th><td id="rBound"></td></tr>
+    <tr><th data-i18n="rEnergy"></th><td id="rEnergy"></td></tr>
+    <tr id="rowEnergyExp"><th data-i18n="rEnergyExp"></th><td id="rEnergyExp"></td></tr>
+    <tr id="rowSpread" hidden><th data-i18n="rSpread"></th><td id="rSpread"></td></tr>
+  </table>
+
+  <h2 data-i18n="legend"></h2>
+  <ul class="legend">
+    <li><span class="sw sw-world"></span><span data-i18n="legWorld"></span></li>
+    <li><span class="sw sw-chosen"></span><span data-i18n="legChosen"></span></li>
+    <li><span class="sw sw-discarded"></span><span data-i18n="legDiscarded"></span></li>
+    <li><span class="sw sw-density"></span><span data-i18n="legDensity"></span></li>
+    <li><span class="sw sw-theory"></span><span data-i18n="legTheory"></span></li>
+  </ul>
+  <p class="note" data-i18n-html="docNote"></p>
+</aside>
+
+<main id="view">
+  <div id="graphBox">
+    <span id="graphTitle" class="visually-hidden" data-i18n="graphAria"></span>
+    <canvas id="graph" role="img" aria-labelledby="graphTitle"></canvas>
+    <div id="tooltip" hidden></div>
+  </div>
+</main>
+
+<script>
+/*
+ * i18n.js: dictionaries and minimal translation engine. Every UI string lives here,
+ * in both languages; I18n.check() verifies that the dictionaries match.
+ */
+(function (root) {
+  'use strict';
+
+  var DICT = {
+    it: {
+      name: 'Italiano',
+      title: 'Molti mondi interagenti',
+      heading: 'Molti mondi interagenti',
+      intro: 'N mondi classici, ognuno con la particella in una posizione precisa, si respingono con una forza che cresce quando due mondi si avvicinano (Hall, Deckert e Wiseman, 2014). Da sole equazioni di Newton emergono indeterminazione, energia di punto zero e interferenza. Con <b>N = 1</b> la repulsione sparisce: resta la meccanica classica.',
+      settings: 'Impostazioni',
+      language: 'Lingua',
+      theme: 'Tema',
+      themeSystem: 'Sistema',
+      themeLight: 'Chiaro',
+      themeDark: 'Scuro',
+      scenario: 'Scenario',
+      scGround: 'Oscillatore: stato fondamentale',
+      scFree: 'Particella libera: allargamento',
+      scCollision: 'Due pacchetti: interferenza',
+      scMeasure: 'Misura: selezione di un bin',
+      noteGround: 'La repulsione tra mondi bilancia la trappola: configurazione ferma con energia (N−1)·ħω/2 e Δx·Δp = (1−1/N)·ħ/2. Con N = 1 entrambe valgono zero: niente punto zero, niente indeterminazione.',
+      noteFree: 'Trappola spenta a t = 0: il ventaglio di mondi si allarga con Δx(t) = Δx(0)·√(1+ω²t²), la stessa legge del pacchetto gaussiano quantistico.',
+      noteCollision: 'Due pacchetti uno contro l’altro: i mondi non si attraversano mai, la repulsione li incanala in bande di densità separate da vuoti. Sono le frange di interferenza, spaziatura circa πħ/p.',
+      noteMeasure: 'Misura di posizione con risoluzione δ: un mondo a caso tra gli N, pesi uguali, fissa il risultato (regola di Born). I mondi entro δ restano un insieme interagente, gli altri bin si separano e sbiadiscono: il collasso è selezione di un sottoinsieme, mai fusione di mondi.',
+      parameters: 'Parametri',
+      worldsLabel: 'Mondi N',
+      omegaLabel: 'Frequenza della trappola ω',
+      speedLabel: 'Velocità dei pacchetti v₀',
+      deltaLabel: 'Risoluzione della misura δ',
+      run: 'Esecuzione',
+      play: 'Avvia',
+      pause: 'Pausa',
+      restart: 'Riparti',
+      doMeasure: 'Misura ora',
+      msgMeasured: 'Mondo {i} di {n} estratto: {k} mondi nel bin, gli altri si separano.',
+      readings: 'Letture',
+      rWorlds: 'Mondi accoppiati',
+      rDx: 'Δx',
+      rDp: 'Δp (con termine osmotico)',
+      rProduct: 'Δx·Δp',
+      rBound: 'Valore esatto (1−1/N)·ħ/2',
+      rEnergy: 'Energia totale',
+      rEnergyExp: 'Energia attesa (N−1)·ħω/2',
+      rSpread: 'Δx(t)/Δx(0) vs √(1+ω²t²)',
+      legend: 'Legenda',
+      legWorld: 'Linea di mondo (una copia della particella)',
+      legChosen: 'Mondo estratto dalla misura',
+      legDiscarded: 'Mondi scartati: evolvono per conto loro',
+      legDensity: 'Densità dei mondi (istogramma)',
+      legTheory: 'Densità quantistica |ψ|² attesa',
+      axisTime: 't',
+      axisX: 'x',
+      ttWorld: 'Mondo {i}',
+      ttPosition: 'posizione x',
+      ttVelocity: 'velocità v',
+      graphAria: 'Linee di mondo delle N copie della particella, tempo in orizzontale e posizione in verticale, con sotto l’istogramma della densità dei mondi',
+      docNote: 'Guida e verifiche: <a href="../../../docs/quantum-mechanics/many-interacting-worlds-simulation-guide.it.md">docs/quantum-mechanics/many-interacting-worlds-simulation-guide.it.md</a>; teoria e bibliografia: <a href="../../../docs/quantum-mechanics/many-interacting-worlds-theory.it.md">docs/quantum-mechanics/many-interacting-worlds-theory.it.md</a>.'
+    },
+    en: {
+      name: 'English',
+      title: 'Many interacting worlds',
+      heading: 'Many interacting worlds',
+      intro: 'N classical worlds, each with the particle at a definite position, repel each other with a force that grows as two worlds get close (Hall, Deckert and Wiseman, 2014). Newton’s equations alone produce uncertainty, zero-point energy and interference. With <b>N = 1</b> the repulsion vanishes: classical mechanics is what remains.',
+      settings: 'Settings',
+      language: 'Language',
+      theme: 'Theme',
+      themeSystem: 'System',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      scenario: 'Scenario',
+      scGround: 'Oscillator: ground state',
+      scFree: 'Free particle: spreading',
+      scCollision: 'Two packets: interference',
+      scMeasure: 'Measurement: picking a bin',
+      noteGround: 'The inter-world repulsion balances the trap: a configuration at rest with energy (N−1)·ħω/2 and Δx·Δp = (1−1/N)·ħ/2. With N = 1 both are zero: no zero point, no uncertainty.',
+      noteFree: 'Trap switched off at t = 0: the fan of worlds spreads as Δx(t) = Δx(0)·√(1+ω²t²), the same law as the quantum Gaussian packet.',
+      noteCollision: 'Two packets head on: worlds never cross, the repulsion funnels them into density bands separated by gaps. These are the interference fringes, spacing about πħ/p.',
+      noteMeasure: 'Position measurement with resolution δ: one world drawn at random among the N, equal weights, fixes the outcome (Born rule). The worlds within δ stay one interacting ensemble, the other bins decouple and fade: collapse is selecting a sub-ensemble, never merging worlds.',
+      parameters: 'Parameters',
+      worldsLabel: 'Worlds N',
+      omegaLabel: 'Trap frequency ω',
+      speedLabel: 'Packet speed v₀',
+      deltaLabel: 'Measurement resolution δ',
+      run: 'Run',
+      play: 'Play',
+      pause: 'Pause',
+      restart: 'Restart',
+      doMeasure: 'Measure now',
+      msgMeasured: 'World {i} of {n} drawn: {k} worlds in the bin, the others decouple.',
+      readings: 'Readings',
+      rWorlds: 'Coupled worlds',
+      rDx: 'Δx',
+      rDp: 'Δp (with the osmotic term)',
+      rProduct: 'Δx·Δp',
+      rBound: 'Exact value (1−1/N)·ħ/2',
+      rEnergy: 'Total energy',
+      rEnergyExp: 'Expected energy (N−1)·ħω/2',
+      rSpread: 'Δx(t)/Δx(0) vs √(1+ω²t²)',
+      legend: 'Legend',
+      legWorld: 'World line (one copy of the particle)',
+      legChosen: 'World drawn by the measurement',
+      legDiscarded: 'Discarded worlds: they evolve on their own',
+      legDensity: 'Density of worlds (histogram)',
+      legTheory: 'Expected quantum density |ψ|²',
+      axisTime: 't',
+      axisX: 'x',
+      ttWorld: 'World {i}',
+      ttPosition: 'position x',
+      ttVelocity: 'velocity v',
+      graphAria: 'World lines of the N copies of the particle, time horizontal and position vertical, with the histogram of the world density below',
+      docNote: 'Guide and checks: <a href="../../../docs/quantum-mechanics/many-interacting-worlds-simulation-guide.en.md">docs/quantum-mechanics/many-interacting-worlds-simulation-guide.en.md</a>; theory and references: <a href="../../../docs/quantum-mechanics/many-interacting-worlds-theory.en.md">docs/quantum-mechanics/many-interacting-worlds-theory.en.md</a>.'
+    }
+  };
+
+  var current = 'it';
+
+  function t(key, vars) {
+    var s = (DICT[current] && DICT[current][key]) || DICT.it[key] || key;
+    if (vars) Object.keys(vars).forEach(function (k) { s = s.replace('{' + k + '}', vars[k]); });
+    return s;
+  }
+
+  function apply(rootEl) {
+    rootEl = rootEl || document;
+    rootEl.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(el.dataset.i18n); });
+    rootEl.querySelectorAll('[data-i18n-html]').forEach(function (el) { el.innerHTML = t(el.dataset.i18nHtml); });
+    document.documentElement.lang = current;
+    document.title = t('title');
+  }
+
+  function setLanguage(lang) {
+    current = DICT[lang] ? lang : 'it';
+    return current;
+  }
+
+  /* Returns the keys missing from any language ('lang:key'); empty when the dictionaries match. */
+  function check() {
+    var missing = [], langs = Object.keys(DICT);
+    langs.forEach(function (a) {
+      Object.keys(DICT[a]).forEach(function (key) {
+        langs.forEach(function (b) { if (!(key in DICT[b])) missing.push(b + ':' + key); });
+      });
+    });
+    return missing;
+  }
+
+  root.I18n = {
+    t: t,
+    apply: apply,
+    setLanguage: setLanguage,
+    getLanguage: function () { return current; },
+    languages: function () { return Object.keys(DICT).map(function (l) { return { code: l, name: DICT[l].name }; }); },
+    check: check
+  };
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+
+<script>
+/*
+ * settings.js: language and theme overlay shared by every simulation (gear button,
+ * top right). Choices are stored under the same keys for all simulations; ?lang= in
+ * the URL overrides the stored language.
+ *
+ * Needs the page's I18n with the keys settings, language, theme, themeSystem, themeLight,
+ * themeDark. Settings.init(onChange) applies the stored choices and returns the resolved
+ * theme ('light' or 'dark'); onChange(theme) is called after every later change, so the
+ * page can redraw what is not styled by CSS (canvas, WebGL) and re-translate dynamic text.
+ */
+(function (root) {
+  'use strict';
+
+  var STORAGE = { lang: 'realitymodels.lang', theme: 'realitymodels.theme' };
+  var GEAR = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+
+  function stored(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function store(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private mode or blocked storage */ } }
+
+  function init(onChange) {
+    var overlay = document.createElement('div');
+    overlay.className = 'settings-overlay';
+    overlay.innerHTML =
+      '<button type="button" class="settings-toggle" aria-expanded="false" aria-controls="settingsPanel">' + GEAR + '</button>' +
+      '<div id="settingsPanel" class="settings-panel" role="dialog" aria-labelledby="settingsTitle" hidden>' +
+      '<h2 id="settingsTitle" data-i18n="settings"></h2>' +
+      '<label for="settingsLanguage" data-i18n="language"></label><select id="settingsLanguage"></select>' +
+      '<label for="settingsTheme" data-i18n="theme"></label><select id="settingsTheme">' +
+      '<option value="system" data-i18n="themeSystem"></option>' +
+      '<option value="light" data-i18n="themeLight"></option>' +
+      '<option value="dark" data-i18n="themeDark"></option></select></div>';
+    document.body.appendChild(overlay);
+
+    var toggle = overlay.querySelector('.settings-toggle');
+    var panel = overlay.querySelector('.settings-panel');
+    var language = overlay.querySelector('#settingsLanguage');
+    var theme = overlay.querySelector('#settingsTheme');
+    var systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+    I18n.languages().forEach(function (l) {
+      var option = document.createElement('option');
+      option.value = l.code;
+      option.textContent = l.name;
+      language.appendChild(option);
+    });
+
+    function translate() {
+      I18n.apply();
+      toggle.setAttribute('aria-label', I18n.t('settings'));
+      toggle.title = I18n.t('settings');
+    }
+    function resolvedTheme() {
+      return theme.value === 'dark' || (theme.value === 'system' && systemDark.matches) ? 'dark' : 'light';
+    }
+    function applyTheme() {
+      document.documentElement.dataset.theme = resolvedTheme();
+      return resolvedTheme();
+    }
+    function setOpen(open) {
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+      if (open) language.focus();
+    }
+
+    var qs = new URLSearchParams(location.search);
+    language.value = I18n.setLanguage(qs.get('lang') || stored(STORAGE.lang) || (navigator.language || 'it').slice(0, 2));
+    theme.value = stored(STORAGE.theme) || 'system';
+    translate();
+
+    language.addEventListener('change', function () {
+      I18n.setLanguage(language.value);
+      store(STORAGE.lang, language.value);
+      translate();
+      onChange(resolvedTheme());
+    });
+    theme.addEventListener('change', function () {
+      store(STORAGE.theme, theme.value);
+      onChange(applyTheme());
+    });
+    systemDark.addEventListener('change', function () {
+      if (theme.value === 'system') onChange(applyTheme());
+    });
+    toggle.addEventListener('click', function () { setOpen(panel.hidden); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !panel.hidden) { setOpen(false); toggle.focus(); }
+    });
+    document.addEventListener('pointerdown', function (e) {
+      if (!panel.hidden && !overlay.contains(e.target)) setOpen(false);
+    });
+
+    return applyTheme();
+  }
+
+  root.Settings = { init: init };
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>
+/*
+ * model.js: many interacting worlds (Hall, Deckert, Wiseman, PRX 4 041013, 2014)
+ * in one dimension. Pure functions, also usable from Node. Units: hbar = m = 1.
+ *
+ * N worlds with definite positions x[0] < ... < x[N-1] and velocities v[n] follow
+ * Newton's equations in the external potential V(x) = omega^2 x^2 / 2 (omega = 0
+ * for a free particle) plus an inter-world repulsion. With gaps g[n] = x[n+1] - x[n],
+ * inverse gaps s[n] = 1/g[n] (s[-1] = s[N-1] = 0) and D[n] = s[n] - s[n-1]:
+ *
+ *   U = (1/8) * sum_n D[n]^2
+ *
+ * U is the discrete form of Bohm's quantum potential; its exact gradient only
+ * involves nearest gaps, so forces cost O(N):
+ *
+ *   dU/dx[m] = (1/4) * (D[m]*(s[m]^2 + s[m-1]^2) - D[m+1]*s[m]^2 - D[m-1]*s[m-1]^2)
+ *
+ * with out-of-range D treated as zero. Exact results used as checks:
+ *   stationary state of the oscillator: D[n] = -2*omega*x[n], hence the shooting
+ *   recurrence s[n] = s[n-1] - 2*omega*x[n] used by groundState;
+ *   sum rule sum_n x[n]^2 = (N-1)/(2*omega);
+ *   total energy (N-1)*omega/2, so one world (N = 1) is purely classical;
+ *   uncertainty product dx*dp = (1 - 1/N)/2, with dp^2 = Var(v) + 2U/N;
+ *   free spreading from the relaxed configuration: x[n](t) = x[n](0)*sqrt(1+omega^2 t^2).
+ */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.Model = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var SAFETY = 0.05;      // substep: dt <= SAFETY * (smallest gap)^2, from a ~ 1/g^3
+  var MAX_RETRY = 24;     // halvings of a substep that made worlds cross
+
+  /* Inter-world potential U and its exact gradient. */
+  function interaction(x) {
+    var n = x.length, m;
+    var s = new Array(n + 1);           // s[m+1] holds 1/(x[m+1]-x[m]); s[0] = s[n] = 0
+    s[0] = 0;
+    s[n] = 0;
+    for (m = 0; m < n - 1; m++) s[m + 1] = 1 / (x[m + 1] - x[m]);
+    var d = new Array(n + 2);           // d[m+1] = D[m]; zero outside the range
+    d[0] = 0;
+    d[n + 1] = 0;
+    var u = 0;
+    for (m = 0; m < n; m++) {
+      d[m + 1] = s[m + 1] - s[m];
+      u += d[m + 1] * d[m + 1];
+    }
+    var grad = new Array(n);
+    for (m = 0; m < n; m++) {
+      grad[m] = 0.25 * (d[m + 1] * (s[m + 1] * s[m + 1] + s[m] * s[m]) -
+        d[m + 2] * s[m + 1] * s[m + 1] - d[m] * s[m] * s[m]);
+    }
+    return { u: u / 8, grad: grad };
+  }
+
+  /* Total acceleration (m = 1): external force minus the gradient of U. */
+  function acceleration(x, omega) {
+    var iw = interaction(x);
+    var a = iw.grad;
+    for (var m = 0; m < x.length; m++) a[m] = -a[m] - omega * omega * x[m];
+    return a;
+  }
+
+  function minGap(x) {
+    var g = Infinity;
+    for (var m = 0; m < x.length - 1; m++) if (x[m + 1] - x[m] < g) g = x[m + 1] - x[m];
+    return g;
+  }
+
+  /**
+   * Stationary configuration of the oscillator, exact at every N: shooting on the
+   * leftmost world with the recurrence s[n] = s[n-1] - 2*omega*x[n], closed by
+   * s[N-1] = 0. Returns the N positions, symmetric around zero.
+   */
+  function groundState(n, omega) {
+    if (n === 1) return [0];
+
+    function propagate(x0) {
+      var x = [x0], s = -2 * omega * x0;
+      for (var m = 1; m < n; m++) {
+        if (s <= 0) return null;        // worlds crossed: x0 not far enough out
+        x.push(x[m - 1] + 1 / s);
+        s -= 2 * omega * x[m];
+      }
+      x.closure = s;                    // must vanish (it is s[N-1])
+      return x;
+    }
+
+    var lo = -3 * Math.sqrt(n / (2 * omega)) - 1, hi = -1e-12;
+    for (var i = 0; i < 200; i++) {
+      var mid = (lo + hi) / 2;
+      var trial = propagate(mid);
+      if (trial === null || trial.closure < 0) hi = mid; else lo = mid;
+    }
+    var x = propagate(lo);
+    var mean = 0, m;
+    for (m = 0; m < n; m++) mean += x[m] / n;
+    for (m = 0; m < n; m++) x[m] -= mean;
+    return x;
+  }
+
+  /** A state: positions, velocities, trap frequency (0 = free), elapsed time. */
+  function createState(x, v, omega) {
+    return { x: x.slice(), v: v ? v.slice() : x.map(function () { return 0; }), omega: omega, t: 0 };
+  }
+
+  /**
+   * Advances the state by dt with velocity Verlet and adaptive substeps
+   * (dt_sub <= SAFETY * g_min^2, the repulsion stiffens as 1/g^3). A substep that
+   * makes worlds cross is halved and retried. maxSubsteps bounds the work per call;
+   * returns the number of substeps taken and whether dt was fully covered.
+   */
+  function step(state, dt, maxSubsteps) {
+    var x = state.x, v = state.v, n = x.length;
+    var remaining = dt, taken = 0;
+    var a = acceleration(x, state.omega);
+    while (remaining > 1e-12 && taken < maxSubsteps) {
+      var h = Math.min(remaining, n > 1 ? SAFETY * Math.pow(minGap(x), 2) : remaining);
+      for (var retry = 0; retry <= MAX_RETRY; retry++) {
+        var xNew = new Array(n), m, ordered = true;
+        for (m = 0; m < n; m++) xNew[m] = x[m] + h * v[m] + 0.5 * h * h * a[m];
+        for (m = 0; m < n - 1; m++) if (xNew[m + 1] <= xNew[m]) { ordered = false; break; }
+        if (ordered) {
+          var aNew = acceleration(xNew, state.omega);
+          for (m = 0; m < n; m++) {
+            x[m] = xNew[m];
+            v[m] += 0.5 * h * (a[m] + aNew[m]);
+          }
+          a = aNew;
+          break;
+        }
+        h /= 2;
+        if (retry === MAX_RETRY) return { substeps: taken, done: false };
+      }
+      state.t += h;
+      remaining -= h;
+      taken++;
+    }
+    return { substeps: taken, done: remaining <= 1e-12 };
+  }
+
+  /**
+   * Ensemble readings. dp includes the osmotic term 2U/N next to the spread of the
+   * velocities: it is the inter-world energy that stores the quantum part of the
+   * momentum spread (exactly (1 - 1/N)/2 for dx*dp in the stationary oscillator).
+   */
+  function statistics(state) {
+    var x = state.x, v = state.v, n = x.length;
+    var meanX = 0, meanV = 0, varX = 0, varV = 0, kinetic = 0, external = 0, m;
+    for (m = 0; m < n; m++) { meanX += x[m] / n; meanV += v[m] / n; }
+    for (m = 0; m < n; m++) {
+      varX += (x[m] - meanX) * (x[m] - meanX) / n;
+      varV += (v[m] - meanV) * (v[m] - meanV) / n;
+      kinetic += 0.5 * v[m] * v[m];
+      external += 0.5 * state.omega * state.omega * x[m] * x[m];
+    }
+    var u = n > 1 ? interaction(x).u : 0;
+    var dx = Math.sqrt(varX);
+    var dp = Math.sqrt(varV + 2 * u / n);
+    return {
+      mean: meanX, dx: dx, dp: dp, product: dx * dp,
+      u: u, energy: kinetic + external + u, meanV: meanV
+    };
+  }
+
+  /**
+   * Measurement with resolution delta: the chosen world (uniform among the N, which
+   * is the Born rule for equally weighted worlds) fixes the recorded value; the
+   * worlds within delta/2 of it are the sub-ensemble compatible with the record.
+   * Returns indices only; condition() builds the post-measurement state.
+   */
+  function measure(state, delta, random) {
+    var x = state.x, n = x.length;
+    var chosen = Math.min(n - 1, Math.floor((random || Math.random)() * n));
+    var first = chosen, last = chosen;
+    while (first > 0 && x[chosen] - x[first - 1] <= delta / 2) first--;
+    while (last < n - 1 && x[last + 1] - x[chosen] <= delta / 2) last++;
+    return { chosen: chosen, first: first, last: last };
+  }
+
+  /** Keeps the worlds first..last (inclusive): the conditioned ensemble. */
+  function condition(state, first, last) {
+    var kept = createState(state.x.slice(first, last + 1), state.v.slice(first, last + 1), state.omega);
+    kept.t = state.t;
+    return kept;
+  }
+
+  return {
+    interaction: interaction,
+    acceleration: acceleration,
+    groundState: groundState,
+    createState: createState,
+    step: step,
+    statistics: statistics,
+    measure: measure,
+    condition: condition,
+    minGap: minGap
+  };
+});
+
+</script>
+<script>
+/*
+ * graph.js: canvas renderer. World lines on the left (time horizontal, position
+ * vertical) and, on the right, the histogram of the world density sharing the
+ * position axis, with the expected quantum density when the scenario has one.
+ * Colours are read from the CSS tokens on every draw, so the canvas follows the theme.
+ */
+(function (root) {
+  'use strict';
+
+  var MARGIN = { left: 46, right: 10, top: 16, bottom: 34 };
+  var STRIP_GAP = 14;
+  var BINS = 56;
+  var HOVER_RADIUS = 12;
+  var FONT = '11px system-ui, sans-serif';
+
+  function MiwGraph(canvas, tooltip) {
+    var self = this;
+    this.canvas = canvas;
+    this.tooltip = tooltip;
+    this.context = canvas.getContext('2d');
+    this.state = null;
+    this.yMax = 1;
+    canvas.addEventListener('pointermove', function (e) { self.setHover(e.offsetX, e.offsetY, e); });
+    canvas.addEventListener('pointerdown', function (e) { self.setHover(e.offsetX, e.offsetY, e); });
+    canvas.addEventListener('pointerleave', function () { self.tooltip.hidden = true; });
+    new ResizeObserver(function () { self.draw(); }).observe(canvas.parentElement);
+  }
+
+  /*
+   * state: { history: [{t, x: [N]}], v: [N] current velocities,
+   *   discardedAt: [N] time each world decoupled (Infinity = still coupled),
+   *   chosen: global index or -1, measureTimes: [t...], overlay: {mean, sigma} | null,
+   *   reset: true to forget the vertical range, text: I18n.t }
+   */
+  MiwGraph.prototype.update = function (state) {
+    if (state.reset) { this.yMax = 1; this.tooltip.hidden = true; }
+    this.state = state;
+    this.draw();
+  };
+
+  MiwGraph.prototype.layout = function () {
+    var box = this.canvas.parentElement, dpr = window.devicePixelRatio || 1;
+    var width = box.clientWidth, height = box.clientHeight;
+    if (this.canvas.width !== Math.round(width * dpr) || this.canvas.height !== Math.round(height * dpr)) {
+      this.canvas.width = Math.round(width * dpr);
+      this.canvas.height = Math.round(height * dpr);
+      this.canvas.style.width = width + 'px';
+      this.canvas.style.height = height + 'px';
+    }
+    this.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var strip = Math.max(70, Math.min(130, Math.round(width * 0.2)));
+    this.plot = {
+      left: MARGIN.left, top: MARGIN.top,
+      width: width - MARGIN.left - MARGIN.right - strip - STRIP_GAP,
+      height: height - MARGIN.top - MARGIN.bottom
+    };
+    this.plot.right = this.plot.left + this.plot.width;
+    this.plot.bottom = this.plot.top + this.plot.height;
+    this.strip = { left: this.plot.right + STRIP_GAP, width: strip };
+    return { width: width, height: height };
+  };
+
+  function readTheme() {
+    var style = getComputedStyle(document.documentElement);
+    function token(name) { return style.getPropertyValue(name).trim(); }
+    return {
+      bg: token('--bg'), text: token('--text'), muted: token('--muted'), grid: token('--grid'),
+      axis: token('--axis'), accent: token('--accent'), mov: token('--mov'), stat: token('--stat')
+    };
+  }
+
+  function tickStep(span, maxTicks) {
+    var steps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
+    for (var i = 0; i < steps.length; i++) if (span / steps[i] <= maxTicks) return steps[i];
+    return steps[steps.length - 1];
+  }
+
+  MiwGraph.prototype.timeRange = function () {
+    var h = this.state.history;
+    var t0 = h[0].t, t1 = h[h.length - 1].t;
+    return { t0: t0, t1: Math.max(t1, t0 + 2) };
+  };
+
+  MiwGraph.prototype.xOf = function (t) {
+    var r = this.timeRange();
+    return this.plot.left + this.plot.width * (t - r.t0) / (r.t1 - r.t0);
+  };
+  MiwGraph.prototype.yOf = function (x) {
+    return this.plot.top + this.plot.height * (0.5 - 0.5 * x / this.yMax);
+  };
+
+  MiwGraph.prototype.draw = function () {
+    var s = this.state;
+    if (!s || !s.history.length) return;
+    var size = this.layout(), ctx = this.context, theme = readTheme();
+    var plot = this.plot;
+    var last = s.history[s.history.length - 1];
+    var n = last.x.length, i, j;
+
+    for (i = 0; i < s.history.length; i++) {
+      var xs = s.history[i].x;
+      for (j = 0; j < xs.length; j++) if (Math.abs(xs[j]) > this.yMax / 1.15) this.yMax = Math.abs(xs[j]) * 1.15;
+    }
+
+    ctx.fillStyle = theme.bg;
+    ctx.fillRect(0, 0, size.width, size.height);
+    ctx.font = FONT;
+
+    /* grid and axes */
+    var range = this.timeRange();
+    var dtTick = tickStep(range.t1 - range.t0, plot.width / 60);
+    var dxTick = tickStep(2 * this.yMax, plot.height / 40);
+    ctx.strokeStyle = theme.grid;
+    ctx.fillStyle = theme.muted;
+    ctx.lineWidth = 1;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    var t = Math.ceil(range.t0 / dtTick) * dtTick;
+    for (; t <= range.t1 + 1e-9; t += dtTick) {
+      var px = this.xOf(t);
+      ctx.beginPath(); ctx.moveTo(px, plot.top); ctx.lineTo(px, plot.bottom); ctx.stroke();
+      ctx.fillText((Math.round(t / dtTick) * dtTick).toFixed(dtTick < 1 ? 1 : 0), px, plot.bottom + 6);
+    }
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (var gy = Math.ceil(-this.yMax / dxTick) * dxTick; gy <= this.yMax + 1e-9; gy += dxTick) {
+      var py = this.yOf(gy);
+      ctx.beginPath(); ctx.moveTo(plot.left, py); ctx.lineTo(plot.right, py); ctx.stroke();
+      ctx.fillText((Math.round(gy / dxTick) * dxTick).toFixed(dxTick < 1 ? 1 : 0), plot.left - 6, py);
+    }
+    ctx.strokeStyle = theme.axis;
+    ctx.strokeRect(plot.left, plot.top, plot.width, plot.height);
+    ctx.fillStyle = theme.text;
+    ctx.textAlign = 'left';
+    ctx.fillText(s.text('axisTime'), plot.right - 12, plot.bottom + 6);
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(s.text('axisX'), plot.left + 4, plot.top - 2);
+
+    /* measurement instants */
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = theme.axis;
+    (s.measureTimes || []).forEach(function (mt) {
+      var mx = this.xOf(mt);
+      ctx.beginPath(); ctx.moveTo(mx, plot.top); ctx.lineTo(mx, plot.bottom); ctx.stroke();
+    }, this);
+    ctx.setLineDash([]);
+
+    /* world lines: coupled in accent, decoupled in muted after their measurement */
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(plot.left, plot.top, plot.width, plot.height);
+    ctx.clip();
+    for (j = 0; j < n; j++) {
+      if (j === s.chosen) continue;
+      this.drawWorld(j, theme.accent, 1.2, 0.85, theme.muted);
+    }
+    if (s.chosen >= 0) this.drawWorld(s.chosen, theme.mov, 2.2, 1, theme.muted);
+    for (j = 0; j < n; j++) {
+      ctx.globalAlpha = s.discardedAt[j] < Infinity ? 0.4 : 1;
+      ctx.fillStyle = j === s.chosen ? theme.mov : (s.discardedAt[j] < Infinity ? theme.muted : theme.accent);
+      ctx.beginPath();
+      ctx.arc(this.xOf(last.t), this.yOf(last.x[j]), j === s.chosen ? 3.4 : 2.2, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    this.drawDensity(theme, last, s);
+  };
+
+  /* One world line, split where the world decouples. */
+  MiwGraph.prototype.drawWorld = function (j, colour, width, alpha, mutedColour) {
+    var s = this.state, ctx = this.context;
+    var cut = s.discardedAt[j];
+    var h = s.history, i;
+
+    function segment(self, from, to, strokeColour, strokeAlpha) {
+      if (to - from < 1) return;
+      ctx.beginPath();
+      for (i = from; i <= to; i++) {
+        var px = self.xOf(h[i].t), py = self.yOf(h[i].x[j]);
+        if (i === from) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = strokeColour;
+      ctx.globalAlpha = strokeAlpha;
+      ctx.lineWidth = width;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    var split = h.length - 1;
+    if (cut < Infinity) {
+      for (i = 0; i < h.length; i++) if (h[i].t >= cut) { split = i; break; }
+      segment(this, 0, split, colour, alpha);
+      segment(this, split, h.length - 1, mutedColour, 0.4);
+    } else {
+      segment(this, 0, h.length - 1, colour, alpha);
+    }
+  };
+
+  /* Right strip: histogram of the current positions, plus the expected density. */
+  MiwGraph.prototype.drawDensity = function (theme, last, s) {
+    var ctx = this.context, plot = this.plot, strip = this.strip;
+    var n = last.x.length, j, b;
+    var binH = 2 * this.yMax / BINS;
+    var all = new Array(BINS), kept = new Array(BINS);
+    for (b = 0; b < BINS; b++) { all[b] = 0; kept[b] = 0; }
+    for (j = 0; j < n; j++) {
+      b = Math.min(BINS - 1, Math.max(0, Math.floor((last.x[j] + this.yMax) / binH)));
+      all[b]++;
+      if (s.discardedAt[j] === Infinity) kept[b]++;
+    }
+    var densityMax = 0;
+    for (b = 0; b < BINS; b++) densityMax = Math.max(densityMax, all[b] / (n * binH));
+    if (s.overlay) densityMax = Math.max(densityMax, 1 / (s.overlay.sigma * Math.sqrt(2 * Math.PI)));
+    if (!densityMax) return;
+
+    ctx.strokeStyle = theme.axis;
+    ctx.strokeRect(strip.left, plot.top, strip.width, plot.height);
+    for (b = 0; b < BINS; b++) {
+      if (!all[b]) continue;
+      var y0 = this.yOf(-this.yMax + (b + 1) * binH), y1 = this.yOf(-this.yMax + b * binH);
+      var wAll = strip.width * (all[b] / (n * binH)) / densityMax;
+      var wKept = strip.width * (kept[b] / (n * binH)) / densityMax;
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = theme.muted;
+      ctx.fillRect(strip.left, y0, wAll, y1 - y0 - 0.5);
+      ctx.globalAlpha = 0.75;
+      ctx.fillStyle = theme.accent;
+      ctx.fillRect(strip.left, y0, wKept, y1 - y0 - 0.5);
+      ctx.globalAlpha = 1;
+    }
+    if (s.overlay) {
+      var sg = s.overlay.sigma, mu = s.overlay.mean;
+      ctx.beginPath();
+      for (var k = 0; k <= 80; k++) {
+        var x = -this.yMax + 2 * this.yMax * k / 80;
+        var rho = Math.exp(-(x - mu) * (x - mu) / (2 * sg * sg)) / (sg * Math.sqrt(2 * Math.PI));
+        var px = strip.left + strip.width * rho / densityMax;
+        var py = this.yOf(x);
+        if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = theme.stat;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineWidth = 1;
+    }
+  };
+
+  /* Tooltip: nearest world at the hovered time column. */
+  MiwGraph.prototype.setHover = function (px, py, event) {
+    var s = this.state;
+    if (!s || !s.history.length || !this.plot) { this.tooltip.hidden = true; return; }
+    var h = s.history, range = this.timeRange();
+    var t = range.t0 + (px - this.plot.left) / this.plot.width * (range.t1 - range.t0);
+    var i = 0;
+    while (i < h.length - 1 && h[i + 1].t < t) i++;
+    var best = -1, bestDist = HOVER_RADIUS;
+    for (var j = 0; j < h[i].x.length; j++) {
+      var d = Math.abs(this.yOf(h[i].x[j]) - py);
+      if (d < bestDist) { bestDist = d; best = j; }
+    }
+    if (best < 0 || px < this.plot.left || px > this.plot.right) { this.tooltip.hidden = true; return; }
+    var rows = '<div><span>' + s.text('axisTime') + '</span><span>' + h[i].t.toFixed(2) + '</span></div>' +
+      '<div><span>' + s.text('ttPosition') + '</span><span>' + h[i].x[best].toFixed(3) + '</span></div>';
+    if (i === h.length - 1) {
+      rows += '<div><span>' + s.text('ttVelocity') + '</span><span>' + s.v[best].toFixed(3) + '</span></div>';
+    }
+    this.tooltip.innerHTML = '<b>' + s.text('ttWorld', { i: best + 1 }) + '</b>' + rows;
+    this.tooltip.hidden = false;
+    var box = this.canvas.parentElement.getBoundingClientRect();
+    var tx = Math.min(event.offsetX + 14, box.width - this.tooltip.offsetWidth - 8);
+    var ty = Math.min(event.offsetY + 14, box.height - this.tooltip.offsetHeight - 8);
+    this.tooltip.style.left = Math.max(0, tx) + 'px';
+    this.tooltip.style.top = Math.max(0, ty) + 'px';
+  };
+
+  root.MiwGraph = MiwGraph;
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>
+/*
+ * app.js: wires the controls to the model and the renderer. The simulation keeps a
+ * list of decoupled ensembles ("parts"): one at the start, more after a measurement
+ * splits the worlds into bins. World indices are global and never reorder, because
+ * worlds cannot cross. Language and theme come from the shared overlay; the state
+ * is mirrored in the query string so a configuration can be linked.
+ */
+(function () {
+  'use strict';
+
+  var LIMITS = { worlds: [1, 80], omega: [0.2, 3], speed: [0.5, 6], delta: [0.1, 2] };
+  var SCENARIOS = ['ground', 'free', 'collision', 'measure'];
+  var NOTE_KEYS = { ground: 'noteGround', free: 'noteFree', collision: 'noteCollision', measure: 'noteMeasure' };
+  var SUBSTEP_BUDGET = 6000;  // substeps per frame, shared by the parts
+  var HISTORY_MAX = 900;      // snapshots kept for the world lines
+  var MAX_FRAME_DT = 0.035;   // simulated time units per frame, 1 unit per real second
+
+  var els = {};
+  ['worlds', 'worldsNum', 'omega', 'omegaNum', 'speed', 'speedNum', 'delta', 'deltaNum',
+    'speedGroup', 'deltaGroup', 'scenarioNote', 'play', 'restart', 'measureBtn', 'measureNote',
+    'rWorlds', 'rDx', 'rDp', 'rProduct', 'rBound', 'rEnergy', 'rEnergyExp', 'rSpread',
+    'rowEnergyExp', 'rowSpread', 'graph', 'tooltip'
+  ].forEach(function (id) { els[id] = document.getElementById(id); });
+
+  var graph = new MiwGraph(els.graph, els.tooltip);
+  var scenario = 'ground';
+  var parts = [], keptIndex = 0, totalWorlds = 0;
+  var discardedAt = [], chosen = -1, measureTimes = [], lastMeasure = null;
+  var trail = [], dx0 = 1;
+  var playing = true, lastNow = null;
+
+  function clamp(value, limits, fallback) {
+    var v = parseFloat(value);
+    return isNaN(v) ? fallback : Math.min(limits[1], Math.max(limits[0], v));
+  }
+  function setPair(range, num, value) { range.value = value; num.value = value; }
+
+  function keptCount() {
+    var k = 0;
+    for (var j = 0; j < totalWorlds; j++) if (discardedAt[j] === Infinity) k++;
+    return k;
+  }
+
+  function pushSnapshot() {
+    var x = new Array(totalWorlds);
+    parts.forEach(function (p) {
+      for (var m = 0; m < p.state.x.length; m++) x[p.first + m] = p.state.x[m];
+    });
+    trail.push({ t: parts[keptIndex].state.t, x: x });
+    if (trail.length > HISTORY_MAX) trail.shift();
+  }
+
+  function currentVelocities() {
+    var v = new Array(totalWorlds);
+    parts.forEach(function (p) {
+      for (var m = 0; m < p.state.v.length; m++) v[p.first + m] = p.state.v[m];
+    });
+    return v;
+  }
+
+  function overlay() {
+    var w = +els.omega.value, t = parts[keptIndex].state.t;
+    if (scenario === 'ground' || (scenario === 'measure' && !measureTimes.length)) {
+      return { mean: 0, sigma: Math.sqrt(1 / (2 * w)) };
+    }
+    if (scenario === 'free') return { mean: 0, sigma: Math.sqrt((1 + w * w * t * t) / (2 * w)) };
+    return null;
+  }
+
+  function build() {
+    var n = +els.worlds.value, w = +els.omega.value, v0 = +els.speed.value;
+    chosen = -1;
+    measureTimes = [];
+    lastMeasure = null;
+    els.measureNote.textContent = '';
+    if (scenario === 'collision') {
+      var half = Model.groundState(Math.max(1, Math.round(n / 2)), w);
+      var sq = 0;
+      half.forEach(function (p) { sq += p * p / half.length; });
+      var offset = Math.max(2, 4 * Math.sqrt(sq));
+      var x = half.map(function (p) { return p - offset; }).concat(half.map(function (p) { return p + offset; }));
+      var v = half.map(function () { return v0; }).concat(half.map(function () { return -v0; }));
+      parts = [{ state: Model.createState(x, v, 0), first: 0 }];
+    } else {
+      parts = [{ state: Model.createState(Model.groundState(n, w), null, scenario === 'free' ? 0 : w), first: 0 }];
+    }
+    keptIndex = 0;
+    totalWorlds = parts[0].state.x.length;
+    discardedAt = new Array(totalWorlds);
+    for (var j = 0; j < totalWorlds; j++) discardedAt[j] = Infinity;
+    trail = [];
+    dx0 = Model.statistics(parts[0].state).dx || 1;
+    pushSnapshot();
+    refresh(true);
+  }
+
+  function refresh(reset) {
+    var kept = parts[keptIndex].state, t = kept.t, w = +els.omega.value;
+    var s = Model.statistics(kept), k = kept.x.length;
+    els.rWorlds.textContent = k + ' / ' + totalWorlds;
+    els.rDx.textContent = s.dx.toFixed(3);
+    els.rDp.textContent = s.dp.toFixed(3);
+    els.rProduct.textContent = s.product.toFixed(3);
+    els.rBound.textContent = ((1 - 1 / k) / 2).toFixed(3);
+    els.rEnergy.textContent = s.energy.toFixed(3);
+    els.rowEnergyExp.hidden = !(scenario === 'ground' || (scenario === 'measure' && !measureTimes.length));
+    if (!els.rowEnergyExp.hidden) els.rEnergyExp.textContent = ((k - 1) * w / 2).toFixed(3);
+    els.rowSpread.hidden = scenario !== 'free';
+    if (!els.rowSpread.hidden) {
+      els.rSpread.textContent = (s.dx / dx0).toFixed(3) + ' / ' + Math.sqrt(1 + w * w * t * t).toFixed(3);
+    }
+    graph.update({
+      history: trail, v: currentVelocities(), discardedAt: discardedAt, chosen: chosen,
+      measureTimes: measureTimes, overlay: overlay(), reset: reset, text: I18n.t
+    });
+    updateUrl();
+  }
+
+  function tick(dt) {
+    var budget = Math.max(200, Math.floor(SUBSTEP_BUDGET / parts.length));
+    parts.forEach(function (p) { Model.step(p.state, dt, budget); });
+    pushSnapshot();
+    refresh(false);
+  }
+
+  function frame(now) {
+    if (playing && lastNow !== null) {
+      var dt = Math.min(MAX_FRAME_DT, (now - lastNow) / 1000);
+      if (dt > 0) tick(dt);
+    }
+    lastNow = now;
+    requestAnimationFrame(frame);
+  }
+
+  /* Splits the kept part at a measurement: the bin of the drawn world stays coupled,
+     the rest is cut into bins no wider than delta, each one an independent ensemble. */
+  function doMeasure() {
+    var part = parts[keptIndex], xs = part.state.x, n = xs.length;
+    if (n < 2) return;
+    var delta = +els.delta.value, t = part.state.t;
+    var r = Model.measure(part.state, delta, Math.random);
+
+    function cut(lo, hi) {
+      var out = [], a = lo;
+      for (var m = lo + 1; m <= hi; m++) {
+        if (xs[m] - xs[a] > delta) { out.push([a, m - 1]); a = m; }
+      }
+      if (a <= hi) out.push([a, hi]);
+      return out;
+    }
+
+    var ranges = cut(0, r.first - 1).concat([[r.first, r.last]], cut(r.last + 1, n - 1));
+    var binParts = [], newKept = -1;
+    ranges.forEach(function (range) {
+      var p = { state: Model.condition(part.state, range[0], range[1]), first: part.first + range[0] };
+      if (range[0] === r.first) newKept = binParts.length;
+      binParts.push(p);
+      if (range[0] !== r.first) {
+        for (var j = part.first + range[0]; j <= part.first + range[1]; j++) discardedAt[j] = t;
+      }
+    });
+    parts = parts.slice(0, keptIndex).concat(binParts, parts.slice(keptIndex + 1));
+    keptIndex += newKept;
+    chosen = part.first + r.chosen;
+    measureTimes.push(t);
+    lastMeasure = { i: chosen + 1, n: totalWorlds, k: r.last - r.first + 1 };
+    els.measureNote.textContent = I18n.t('msgMeasured', lastMeasure);
+    refresh(false);
+  }
+
+  function setScenario(value) {
+    scenario = value;
+    document.querySelectorAll('[data-scenario]').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.scenario === scenario);
+      b.setAttribute('aria-pressed', b.dataset.scenario === scenario);
+    });
+    els.scenarioNote.innerHTML = I18n.t(NOTE_KEYS[scenario]);
+    els.speedGroup.hidden = scenario !== 'collision';
+    els.deltaGroup.hidden = scenario !== 'measure';
+  }
+
+  function setPlaying(on) {
+    playing = on;
+    els.play.dataset.i18n = on ? 'pause' : 'play';
+    els.play.textContent = I18n.t(els.play.dataset.i18n);
+  }
+
+  function updateUrl() {
+    var q = new URLSearchParams({
+      sc: scenario, N: els.worlds.value, w: els.omega.value, v0: els.speed.value,
+      d: els.delta.value, lang: I18n.getLanguage()
+    });
+    try { history.replaceState(null, '', '?' + q); } catch (e) { /* not allowed on some file:// setups */ }
+  }
+
+  function bindPair(range, num, onChange) {
+    range.addEventListener('input', function () { num.value = range.value; onChange(); });
+    num.addEventListener('input', function () {
+      var v = parseFloat(num.value);
+      if (isNaN(v)) return;
+      range.value = Math.min(parseFloat(range.max), Math.max(parseFloat(range.min), v));
+      onChange();
+    });
+  }
+
+  /* Initial state: query string, then defaults; a change of language or theme redraws everything */
+  var qs = new URLSearchParams(location.search);
+  Settings.init(function () {
+    els.scenarioNote.innerHTML = I18n.t(NOTE_KEYS[scenario]);
+    els.play.textContent = I18n.t(els.play.dataset.i18n || 'pause');
+    if (lastMeasure) els.measureNote.textContent = I18n.t('msgMeasured', lastMeasure);
+    refresh(false);
+  });
+  setPair(els.worlds, els.worldsNum, clamp(qs.get('N'), LIMITS.worlds, 20));
+  setPair(els.omega, els.omegaNum, clamp(qs.get('w'), LIMITS.omega, 1));
+  setPair(els.speed, els.speedNum, clamp(qs.get('v0'), LIMITS.speed, 3));
+  setPair(els.delta, els.deltaNum, clamp(qs.get('d'), LIMITS.delta, 0.4));
+  setScenario(SCENARIOS.indexOf(qs.get('sc')) >= 0 ? qs.get('sc') : 'ground');
+  setPlaying(true);
+  build();
+  requestAnimationFrame(frame);
+
+  bindPair(els.worlds, els.worldsNum, build);
+  bindPair(els.omega, els.omegaNum, build);
+  bindPair(els.speed, els.speedNum, build);
+  bindPair(els.delta, els.deltaNum, updateUrl);
+  els.play.addEventListener('click', function () { setPlaying(!playing); });
+  els.restart.addEventListener('click', build);
+  els.measureBtn.addEventListener('click', doMeasure);
+  document.querySelectorAll('[data-scenario]').forEach(function (b) {
+    b.addEventListener('click', function () { setScenario(b.dataset.scenario); build(); });
+  });
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Universo blocco: corpo che accelera</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect x=%271%27 y=%271%27 width=%2714%27 height=%2714%27 rx=%272%27 fill=%27%233a6ea5%27/%3E%3Cpath d=%27M4 13 Q4 6 8 3 Q12 6 12 13 L9 13 Q9 8 8 7 Q7 8 7 13 Z%27 fill=%27%23e07b1a%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="../../shared/css/settings.css">
+</head>
+<body>
+  <aside id="panel">
+    <h1 data-i18n="heading">Universo blocco</h1>
+    <p class="intro" data-i18n-html="intro"></p>
+
+    <section>
+      <h2 data-i18n="parameters">Parametri</h2>
+      <label for="accel" data-i18n-html="aLabel"></label>
+      <div class="row">
+        <input type="range" id="accel" min="0.1" max="3" step="0.05" value="1">
+        <input type="number" id="accelNum" min="0.1" max="3" step="0.05" value="1" aria-labelledby="accel">
+      </div>
+
+      <label for="dist" data-i18n-html="XLabel"></label>
+      <div class="row">
+        <input type="range" id="dist" min="0.5" max="6" step="0.1" value="3">
+        <input type="number" id="distNum" min="0.5" max="6" step="0.1" value="3" aria-labelledby="dist">
+      </div>
+
+      <label for="L0" data-i18n-html="L0Label"></label>
+      <div class="row">
+        <input type="range" id="L0" min="0.2" max="2" step="0.1" value="1">
+        <input type="number" id="L0Num" min="0.2" max="2" step="0.1" value="1" aria-labelledby="L0">
+      </div>
+
+      <label for="W" data-i18n-html="WLabel"></label>
+      <div class="row">
+        <input type="range" id="W" min="0.1" max="1" step="0.05" value="0.4">
+        <input type="number" id="WNum" min="0.1" max="1" step="0.05" value="0.4" aria-labelledby="W">
+      </div>
+      <p class="note" data-i18n-html="accelNote"></p>
+    </section>
+
+    <section>
+      <h2 data-i18n="planes">Piani di simultaneità</h2>
+      <label for="tNow"><span data-i18n-html="tNowLabel"></span> <span id="tNowVal">2.00</span></label>
+      <input type="range" id="tNow" min="-1" max="6" step="0.01" value="2">
+
+      <label class="check">
+        <input type="checkbox" id="showMoving">
+        <span data-i18n-html="showMoving"></span>
+      </label>
+      <div id="movingBlock" class="sub hidden">
+        <label for="tau"><span data-i18n-html="tauLabel"></span> <span id="tauVal">1.50</span></label>
+        <input type="range" id="tau" min="-1" max="5" step="0.01" value="1.5">
+        <p class="note" data-i18n="minkowskiNote"></p>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" id="showCone">
+        <span data-i18n="showCone"></span>
+      </label>
+    </section>
+
+    <section>
+      <h2 data-i18n="clocks">Orologi</h2>
+      <label class="check">
+        <input type="checkbox" id="showTicks" checked>
+        <span data-i18n-html="showTicks"></span>
+      </label>
+      <p class="note" data-i18n-html="ticksNote"></p>
+    </section>
+
+    <section>
+      <h2 data-i18n="view">Vista</h2>
+      <div class="buttons">
+        <button type="button" data-view="3d" class="active" data-i18n="view3d">3D</button>
+        <button type="button" data-view="side" data-i18n="viewSide">Laterale x–t</button>
+        <button type="button" data-view="top" data-i18n="viewTop">Dall'alto x–y</button>
+      </div>
+      <p class="note" data-i18n="viewHint"></p>
+    </section>
+
+    <section>
+      <h2 data-i18n="readings">Letture</h2>
+      <table id="readout">
+        <tr><th colspan="2" class="group" data-i18n="trip"></th></tr>
+        <tr><th data-i18n-html="rT"></th><td id="rT"></td></tr>
+        <tr><th data-i18n-html="rTauTotal"></th><td id="rTauTotal" class="hl"></td></tr>
+        <tr><th data-i18n-html="rTripRatio"></th><td id="rTripRatio"></td></tr>
+        <tr><th data-i18n="rBetaMax"></th><td id="rBetaMax"></td></tr>
+        <tr><th data-i18n-html="rAfront"></th><td id="rAfront"></td></tr>
+        <tr><th colspan="2" class="group" data-i18n="onPlane"></th></tr>
+        <tr><th data-i18n-html="rBeta"></th><td id="rBeta"></td></tr>
+        <tr><th data-i18n-html="rGamma"></th><td id="rGamma"></td></tr>
+        <tr><th data-i18n="rLstat"></th><td id="rLstat"></td></tr>
+        <tr><th data-i18n="rLmov"></th><td id="rLmov" class="hl"></td></tr>
+        <tr><th data-i18n-html="rLgamma"></th><td id="rLgamma"></td></tr>
+        <tr><th data-i18n-html="rRatio"></th><td id="rRatio"></td></tr>
+        <tr><th data-i18n="rAngle"></th><td id="rAngle"></td></tr>
+        <tr class="movingOnly hidden"><th data-i18n="rMprop"></th><td id="rMprop"></td></tr>
+        <tr class="movingOnly hidden"><th data-i18n="rMstat"></th><td id="rMstat" class="hl"></td></tr>
+        <tr class="movingOnly hidden"><th data-i18n="rEucl"></th><td id="rEucl"></td></tr>
+        <tr><th colspan="2" class="group" data-i18n="clocks"></th></tr>
+        <tr><th data-i18n-html="rTstat"></th><td id="rTstat"></td></tr>
+        <tr><th data-i18n-html="rTmov"></th><td id="rTmov" class="hl"></td></tr>
+        <tr class="movingOnly hidden"><th data-i18n-html="rTmovProper"></th><td id="rTmovProper" class="hl"></td></tr>
+        <tr class="movingOnly hidden"><th data-i18n-html="rTstatIn"></th><td id="rTstatIn"></td></tr>
+      </table>
+    </section>
+
+    <section class="legend">
+      <h2 data-i18n="legend">Legenda</h2>
+      <ul>
+        <li><span class="sw sw-stat"></span> <span data-i18n="legStat"></span></li>
+        <li><span class="sw sw-mov"></span> <span data-i18n="legMov"></span></li>
+        <li><span class="sw sw-plane"></span> <span data-i18n="legPlane"></span></li>
+        <li><span class="sw sw-plane2"></span> <span data-i18n="legPlane2"></span></li>
+        <li><span class="sw sw-cone"></span> <span data-i18n="legCone"></span></li>
+        <li><span class="sw sw-tick"></span> <span data-i18n="legTick"></span></li>
+      </ul>
+      <p class="note" data-i18n-html="docNote"></p>
+    </section>
+  </aside>
+
+  <main id="view"></main>
+
+  <script src="../../shared/lib/three.min.js"></script>
+  <script src="../../shared/lib/OrbitControls.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="../../shared/js/settings.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

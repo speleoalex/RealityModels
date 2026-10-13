@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Censimento delle macchine di Turing</title>
+<style>
+/* Theme tokens: light on :root, dark for the system preference (unless light is forced) and for the explicit choice */
+:root {
+  --bg: #f7f7f5;
+  --panel: #ffffff;
+  --control: #fafafa;
+  --text: #222;
+  --muted: #666;
+  --border: #ddd;
+  --stat: #3a6ea5;
+  --mov: #e07b1a;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --accent: #eb6834;
+  --ramp-1: #cde2fb;
+  --ramp-2: #9ec5f4;
+  --ramp-3: #5598e7;
+  --ramp-4: #2a78d6;
+  --ramp-5: #184f95;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1d22;
+    --panel: #23262d;
+    --control: #2c3038;
+    --text: #e6e6e6;
+    --muted: #a0a3aa;
+    --border: #3a3d45;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --accent: #d95926;
+    --ramp-1: #184f95;
+    --ramp-2: #256abf;
+    --ramp-3: #3987e5;
+    --ramp-4: #6da7ec;
+    --ramp-5: #b7d3f6;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1b1d22;
+  --panel: #23262d;
+  --control: #2c3038;
+  --text: #e6e6e6;
+  --muted: #a0a3aa;
+  --border: #3a3d45;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --accent: #d95926;
+  --ramp-1: #184f95;
+  --ramp-2: #256abf;
+  --ramp-3: #3987e5;
+  --ramp-4: #6da7ec;
+  --ramp-5: #b7d3f6;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body { display: flex; }
+
+#panel {
+  width: 340px;
+  flex: 0 0 340px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 18px 24px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+#view { flex: 1 1 auto; height: 100%; min-width: 0; position: relative; }
+
+#graphBox { position: absolute; inset: 0; }
+#graphBox canvas { display: block; }
+
+h1 { font-size: 20px; margin: 0 0 8px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 6px; }
+.intro { margin: 0; line-height: 1.45; }
+
+label, .label { display: block; margin: 10px 0 4px; }
+
+input[type=range] { width: 100%; height: 44px; margin: 0; cursor: pointer; }
+input[type=number], select {
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--control);
+  color: var(--text);
+  font: inherit;
+}
+input[type=number] { width: 96px; }
+
+.row { display: flex; gap: 8px; align-items: center; }
+.row input[type=range] { flex: 1 1 auto; }
+
+.note { color: var(--muted); font-size: 12px; line-height: 1.4; margin: 6px 0 0; }
+
+.buttons { display: flex; gap: 6px; }
+.buttons button {
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--control);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.buttons button.active { background: var(--stat); color: #fff; border-color: var(--stat); }
+input:disabled, .buttons button:disabled { opacity: .45; cursor: default; }
+
+:focus-visible { outline: 2px solid var(--mov); outline-offset: 2px; }
+
+#readout { width: 100%; border-collapse: collapse; }
+#readout th { text-align: left; font-weight: normal; color: var(--muted); width: 60%; }
+#readout td { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#readout th, #readout td { padding: 6px 2px; border-bottom: 1px solid var(--border); }
+
+.legend { list-style: none; margin: 0; padding: 0; }
+.legend li { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.sw { flex: 0 0 auto; display: inline-block; width: 18px; height: 12px; border-radius: 2px; }
+.sw-bar { background: var(--ramp-3); }
+.sw-ramp { background: linear-gradient(90deg, var(--ramp-1), var(--ramp-5)); }
+.sw-strip { background: var(--ramp-2); }
+.sw-accent { background: var(--accent); }
+
+#tooltip {
+  position: absolute;
+  pointer-events: none;
+  max-width: 260px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+}
+#tooltip b { display: block; margin-bottom: 4px; }
+#tooltip div { display: flex; justify-content: space-between; gap: 12px; }
+#tooltip div span:first-child { color: var(--muted); }
+#tooltip div span:last-child { font-variant-numeric: tabular-nums; }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 760px) {
+  body { flex-direction: column; }
+  #panel { width: 100%; flex: 0 0 auto; height: auto; max-height: 50%; border-right: 0; border-bottom: 1px solid var(--border); }
+  #view { height: 50%; }
+}
+
+</style>
+<style>
+/* Language and theme overlay (shared/js/settings.js); colors come from the page's theme tokens */
+.settings-overlay { position: fixed; top: 10px; right: 10px; z-index: 10; }
+
+.settings-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+}
+.settings-toggle svg { width: 22px; height: 22px; }
+
+.settings-panel {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  width: 260px;
+  max-width: calc(100vw - 20px);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
+}
+.settings-panel[hidden] { display: none; }
+.settings-panel h2 { grid-column: 1 / -1; margin: 0; }
+.settings-panel label { margin: 0; }
+
+/* on narrow screens the side panel is on top: keep its title clear of the button */
+@media (max-width: 760px) {
+  #panel h1 { padding-right: 52px; }
+}
+
+</style>
+</head>
+<body>
+<aside id="panel">
+  <h1 data-i18n="heading"></h1>
+  <p class="intro" data-i18n-html="intro"></p>
+
+  <h2 data-i18n="parameters"></h2>
+  <span id="statesLabel" class="label" data-i18n="statesLabel"></span>
+  <div class="buttons" role="group" aria-labelledby="statesLabel">
+    <button type="button" data-states="2" data-i18n="states2"></button>
+    <button type="button" data-states="3" data-i18n="states3"></button>
+    <button type="button" data-states="4" data-i18n="states4"></button>
+  </div>
+  <p class="note" id="modeNote"></p>
+  <label for="seed" data-i18n="seedLabel"></label>
+  <input type="number" id="seed" min="0" max="99999" step="1" value="1">
+  <label id="samplesLabel" for="samples" data-i18n="samplesLabel"></label>
+  <div class="row">
+    <input type="range" id="samples" min="100000" max="10000000" step="100000" value="1000000">
+    <input type="number" id="samplesNum" min="100000" max="10000000" step="100000" value="1000000" aria-labelledby="samplesLabel">
+  </div>
+
+  <h2 data-i18n="run"></h2>
+  <div class="buttons"><button type="button" id="play" data-i18n="pause"></button></div>
+
+  <h2 data-i18n="scale"></h2>
+  <div class="buttons">
+    <button type="button" data-scale="lin" data-i18n="scaleLin"></button>
+    <button type="button" data-scale="log" data-i18n="scaleLog"></button>
+  </div>
+
+  <h2 data-i18n="readings"></h2>
+  <table id="readout">
+    <tr><th data-i18n="rMachines"></th><td id="rMachines"></td></tr>
+    <tr><th data-i18n="rHalting"></th><td id="rHalting"></td></tr>
+    <tr><th data-i18n="rDistinct"></th><td id="rDistinct"></td></tr>
+    <tr><th data-i18n="rLongest"></th><td id="rLongest"></td></tr>
+    <tr><th data-i18n="rTop"></th><td id="rTop"></td></tr>
+  </table>
+
+  <h2 data-i18n="legend"></h2>
+  <ul class="legend">
+    <li><span class="sw sw-bar"></span><span data-i18n="legBar"></span></li>
+    <li><span class="sw sw-ramp"></span><span data-i18n="legColour"></span></li>
+    <li><span class="sw sw-strip"></span><span data-i18n="legStrip"></span></li>
+    <li><span class="sw sw-accent"></span><span data-i18n="legAccent"></span></li>
+  </ul>
+  <p class="note" data-i18n-html="docNote"></p>
+</aside>
+
+<main id="view">
+  <div id="graphBox">
+    <span id="graphTitle" class="visually-hidden" data-i18n="graphAria"></span>
+    <canvas id="graph" role="img" aria-labelledby="graphTitle"></canvas>
+    <div id="tooltip" hidden></div>
+  </div>
+</main>
+
+<script>
+/*
+ * i18n.js: UI dictionaries (Italian default, English). Every user-visible string
+ * lives here; the markup only carries data-i18n / data-i18n-html keys.
+ */
+(function (root) {
+  'use strict';
+
+  var DICT = {
+    it: {
+      name: 'Italiano',
+      title: 'Censimento delle macchine di Turing',
+      heading: 'Censimento delle macchine di Turing',
+      intro: 'Tutte le macchine di Turing con <b>n</b> stati e 2 simboli partono dal nastro vuoto; delle macchine che si fermano si registra la stringa delle celle visitate. Le stringhe corte e regolari escono da molte più macchine di quelle lunghe e irregolari: le frequenze approssimano la <b>probabilità algoritmica</b> della distribuzione universale di Solomonoff e Levin. Nessuna stringa è privilegiata in partenza: la gerarchia emerge dal solo contare.',
+      settings: 'Impostazioni',
+      language: 'Lingua',
+      theme: 'Tema',
+      themeSystem: 'Sistema',
+      themeLight: 'Chiaro',
+      themeDark: 'Scuro',
+      parameters: 'Parametri',
+      statesLabel: 'Stati',
+      states2: '2 stati',
+      states3: '3 stati',
+      states4: '4 stati',
+      modeNoteFull: 'Censimento esatto: tutte le {total} macchine vengono enumerate. Una macchina che supera S({n}) = {cap} passi sul nastro vuoto non si ferma mai.',
+      modeNoteSample: 'Con 4 stati le macchine sono {total}: troppe da enumerare. Si estrae un campione casuale riproducibile dal seme, con limite di S(4) = 107 passi.',
+      seedLabel: 'Seme casuale',
+      samplesLabel: 'Macchine campionate',
+      run: 'Esecuzione',
+      play: '▶ Riprendi',
+      pause: '❙❙ Pausa',
+      done: '✓ Censimento completo',
+      scale: 'Scala',
+      scaleLin: 'Lineare',
+      scaleLog: 'Logaritmica',
+      readings: 'Letture',
+      rMachines: 'Macchine eseguite / totali',
+      rHalting: 'Macchine che si fermano',
+      rDistinct: 'Stringhe distinte',
+      rLongest: 'Corsa più lunga / limite S(n)',
+      rTop: 'Stringa più frequente',
+      legend: 'Legenda',
+      legBar: 'Barra: una stringa prodotta; altezza = quota delle macchine che si fermano',
+      legColour: 'Colore = lunghezza della stringa (la scala satura a 5)',
+      legStrip: 'Striscia in basso: quota totale per lunghezza',
+      legAccent: 'Barra sotto il puntatore; contorno pieno = stringa speculare, tratteggiato = complemento 0↔1',
+      docNote: 'Modello e verifiche: <a href="../../../docs/foundations/algorithmic-probability-simulation-guide.it.md">docs/foundations/algorithmic-probability-simulation-guide.it.md</a>; teoria e bibliografia: <a href="../../../docs/foundations/algorithmic-probability-theory.it.md">docs/foundations/algorithmic-probability-theory.it.md</a>.',
+      barTitle: 'Stringhe prodotte ({shown} di {distinct})',
+      lenTitle: 'Quota per lunghezza',
+      axisShare: 'quota delle macchine che si fermano',
+      ttShare: 'Quota',
+      ttMachines: 'Macchine',
+      ttRank: 'Posizione',
+      ttBits: 'Complessità stimata (bit)',
+      ttMirror: 'Speculare {s}',
+      ttComplement: 'Complemento {s}',
+      graphAria: 'Istogramma delle stringhe prodotte dalle macchine di Turing che si fermano: altezza = quota, colore = lunghezza della stringa; sotto, la quota totale per ogni lunghezza.'
+    },
+    en: {
+      name: 'English',
+      title: 'A census of Turing machines',
+      heading: 'A census of Turing machines',
+      intro: 'Every Turing machine with <b>n</b> states and 2 symbols starts on a blank tape; for the machines that halt, the string of visited cells is recorded. Short regular strings come out of many more machines than long irregular ones: the frequencies approximate the <b>algorithmic probability</b> of the Solomonoff-Levin universal distribution. No string is privileged at the start: the hierarchy emerges from counting alone.',
+      settings: 'Settings',
+      language: 'Language',
+      theme: 'Theme',
+      themeSystem: 'System',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      parameters: 'Parameters',
+      statesLabel: 'States',
+      states2: '2 states',
+      states3: '3 states',
+      states4: '4 states',
+      modeNoteFull: 'Exact census: all {total} machines are enumerated. A machine that goes past S({n}) = {cap} steps on the blank tape never halts.',
+      modeNoteSample: 'With 4 states there are {total} machines: too many to enumerate. A reproducible random sample is drawn from the seed, capped at S(4) = 107 steps.',
+      seedLabel: 'Random seed',
+      samplesLabel: 'Sampled machines',
+      run: 'Run',
+      play: '▶ Resume',
+      pause: '❙❙ Pause',
+      done: '✓ Census complete',
+      scale: 'Scale',
+      scaleLin: 'Linear',
+      scaleLog: 'Logarithmic',
+      readings: 'Readings',
+      rMachines: 'Machines run / total',
+      rHalting: 'Halting machines',
+      rDistinct: 'Distinct strings',
+      rLongest: 'Longest run / cap S(n)',
+      rTop: 'Most frequent string',
+      legend: 'Legend',
+      legBar: 'Bar: one output string; height = share of the halting machines',
+      legColour: 'Colour = length of the string (the scale saturates at 5)',
+      legStrip: 'Bottom strip: total share per length',
+      legAccent: 'Bar under the pointer; solid outline = mirrored string, dashed = 0↔1 complement',
+      docNote: 'Model and checks: <a href="../../../docs/foundations/algorithmic-probability-simulation-guide.en.md">docs/foundations/algorithmic-probability-simulation-guide.en.md</a>; theory and bibliography: <a href="../../../docs/foundations/algorithmic-probability-theory.en.md">docs/foundations/algorithmic-probability-theory.en.md</a>.',
+      barTitle: 'Output strings ({shown} of {distinct})',
+      lenTitle: 'Share by length',
+      axisShare: 'share of halting machines',
+      ttShare: 'Share',
+      ttMachines: 'Machines',
+      ttRank: 'Rank',
+      ttBits: 'Estimated complexity (bits)',
+      ttMirror: 'Mirror {s}',
+      ttComplement: 'Complement {s}',
+      graphAria: 'Histogram of the strings produced by the halting Turing machines: height = share, colour = string length; below, the total share per length.'
+    }
+  };
+
+  var current = 'it';
+
+  function t(key, vars) {
+    var s = (DICT[current] && DICT[current][key]) || DICT.it[key] || key;
+    if (vars) Object.keys(vars).forEach(function (k) { s = s.replace('{' + k + '}', vars[k]); });
+    return s;
+  }
+
+  function apply(rootEl) {
+    rootEl = rootEl || document;
+    rootEl.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(el.dataset.i18n); });
+    rootEl.querySelectorAll('[data-i18n-html]').forEach(function (el) { el.innerHTML = t(el.dataset.i18nHtml); });
+    document.documentElement.lang = current;
+    document.title = t('title');
+  }
+
+  function setLanguage(lang) {
+    current = DICT[lang] ? lang : 'it';
+    return current;
+  }
+
+  /* Returns the keys missing from any language ('lang:key'); empty when the dictionaries match. */
+  function check() {
+    var missing = [], langs = Object.keys(DICT);
+    langs.forEach(function (a) {
+      Object.keys(DICT[a]).forEach(function (key) {
+        langs.forEach(function (b) { if (!(key in DICT[b])) missing.push(b + ':' + key); });
+      });
+    });
+    return missing;
+  }
+
+  root.I18n = {
+    t: t,
+    apply: apply,
+    setLanguage: setLanguage,
+    getLanguage: function () { return current; },
+    languages: function () { return Object.keys(DICT).map(function (l) { return { code: l, name: DICT[l].name }; }); },
+    check: check
+  };
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+
+<script>
+/*
+ * settings.js: language and theme overlay shared by every simulation (gear button,
+ * top right). Choices are stored under the same keys for all simulations; ?lang= in
+ * the URL overrides the stored language.
+ *
+ * Needs the page's I18n with the keys settings, language, theme, themeSystem, themeLight,
+ * themeDark. Settings.init(onChange) applies the stored choices and returns the resolved
+ * theme ('light' or 'dark'); onChange(theme) is called after every later change, so the
+ * page can redraw what is not styled by CSS (canvas, WebGL) and re-translate dynamic text.
+ */
+(function (root) {
+  'use strict';
+
+  var STORAGE = { lang: 'realitymodels.lang', theme: 'realitymodels.theme' };
+  var GEAR = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+
+  function stored(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function store(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private mode or blocked storage */ } }
+
+  function init(onChange) {
+    var overlay = document.createElement('div');
+    overlay.className = 'settings-overlay';
+    overlay.innerHTML =
+      '<button type="button" class="settings-toggle" aria-expanded="false" aria-controls="settingsPanel">' + GEAR + '</button>' +
+      '<div id="settingsPanel" class="settings-panel" role="dialog" aria-labelledby="settingsTitle" hidden>' +
+      '<h2 id="settingsTitle" data-i18n="settings"></h2>' +
+      '<label for="settingsLanguage" data-i18n="language"></label><select id="settingsLanguage"></select>' +
+      '<label for="settingsTheme" data-i18n="theme"></label><select id="settingsTheme">' +
+      '<option value="system" data-i18n="themeSystem"></option>' +
+      '<option value="light" data-i18n="themeLight"></option>' +
+      '<option value="dark" data-i18n="themeDark"></option></select></div>';
+    document.body.appendChild(overlay);
+
+    var toggle = overlay.querySelector('.settings-toggle');
+    var panel = overlay.querySelector('.settings-panel');
+    var language = overlay.querySelector('#settingsLanguage');
+    var theme = overlay.querySelector('#settingsTheme');
+    var systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+    I18n.languages().forEach(function (l) {
+      var option = document.createElement('option');
+      option.value = l.code;
+      option.textContent = l.name;
+      language.appendChild(option);
+    });
+
+    function translate() {
+      I18n.apply();
+      toggle.setAttribute('aria-label', I18n.t('settings'));
+      toggle.title = I18n.t('settings');
+    }
+    function resolvedTheme() {
+      return theme.value === 'dark' || (theme.value === 'system' && systemDark.matches) ? 'dark' : 'light';
+    }
+    function applyTheme() {
+      document.documentElement.dataset.theme = resolvedTheme();
+      return resolvedTheme();
+    }
+    function setOpen(open) {
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+      if (open) language.focus();
+    }
+
+    var qs = new URLSearchParams(location.search);
+    language.value = I18n.setLanguage(qs.get('lang') || stored(STORAGE.lang) || (navigator.language || 'it').slice(0, 2));
+    theme.value = stored(STORAGE.theme) || 'system';
+    translate();
+
+    language.addEventListener('change', function () {
+      I18n.setLanguage(language.value);
+      store(STORAGE.lang, language.value);
+      translate();
+      onChange(resolvedTheme());
+    });
+    theme.addEventListener('change', function () {
+      store(STORAGE.theme, theme.value);
+      onChange(applyTheme());
+    });
+    systemDark.addEventListener('change', function () {
+      if (theme.value === 'system') onChange(applyTheme());
+    });
+    toggle.addEventListener('click', function () { setOpen(panel.hidden); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !panel.hidden) { setOpen(false); toggle.focus(); }
+    });
+    document.addEventListener('pointerdown', function (e) {
+      if (!panel.hidden && !overlay.contains(e.target)) setOpen(false);
+    });
+
+    return applyTheme();
+  }
+
+  root.Settings = { init: init };
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>
+/*
+ * model.js: census of the n-state 2-symbol Turing machines in the busy beaver
+ * formalism. Pure functions, no DOM, also usable from Node.
+ *
+ * A machine has one instruction per (state, symbol) pair: write 0 or 1, move
+ * left or right, then go to one of the n states or halt. The halting instruction
+ * still writes and moves, as in Rado's formalism, so each pair has 4(n+1)
+ * choices and there are (4(n+1))^(2n) machines. Every machine starts in state 0
+ * on a tape of zeros; the output of a halting machine is the segment of cells it
+ * scanned. The number of machines per output approximates the algorithmic
+ * probability of the string: simple strings come from many more machines.
+ *
+ * The step cap is the busy beaver record S(n): a machine still running after
+ * S(n) steps on the blank tape never halts, so for n = 2 and 3 the full
+ * enumeration is exact. For n = 4 there are 2.56e10 machines, too many to
+ * enumerate, and the census draws a seeded random sample, capped at S(4) = 107.
+ */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.Model = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  /* Known S(n): Rado 1962, Lin and Rado 1965, Brady 1983 (see the theory doc) */
+  var STEP_CAP = { 2: 6, 3: 21, 4: 107 };
+
+  /* mulberry32: a small seeded generator, so a sample is reproducible */
+  function seededRandom(seed) {
+    var state = seed >>> 0;
+    return function () {
+      state = (state + 0x6D2B79F5) >>> 0;
+      var z = state;
+      z = Math.imul(z ^ (z >>> 15), z | 1);
+      z ^= z + Math.imul(z ^ (z >>> 7), z | 61);
+      return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function machineCount(states) { return Math.pow(4 * (states + 1), 2 * states); }
+
+  function stepCap(states) { return STEP_CAP[states]; }
+
+  /*
+   * An instruction is a digit d in 0..4(n+1)-1: d & 1 = written symbol,
+   * (d >> 1) & 1 = move (1 right, 0 left), d >> 2 = next state, n meaning halt.
+   * Full mode walks the machine space with an odometer over the 2n digits;
+   * sample mode draws the digits at random.
+   */
+  function create(options) {
+    var n = options.states;
+    var cap = STEP_CAP[n];
+    var opts = 4 * (n + 1);
+    var census = {
+      states: n,
+      mode: n > 3 ? 'sample' : 'full',
+      cap: cap,
+      total: machineCount(n),
+      seed: options.seed || 0,
+      done: 0,
+      halting: 0,
+      maxUsed: 0,
+      counts: {},
+      opts: opts,
+      slots: 2 * n,
+      write: new Int8Array(opts),
+      move: new Int8Array(opts),
+      next: new Int8Array(opts),
+      dig: new Int32Array(2 * n),
+      offset: cap + 1,
+      tape: new Int8Array(2 * cap + 3),
+      touched: new Int32Array(cap + 1),
+      random: seededRandom(options.seed || 0)
+    };
+    census.target = census.mode === 'full' ? census.total : (options.samples || 1000000);
+    for (var d = 0; d < opts; d++) {
+      census.write[d] = d & 1;
+      census.move[d] = ((d >> 1) & 1) ? 1 : -1;
+      census.next[d] = d >> 2;
+    }
+    return census;
+  }
+
+  /*
+   * Runs up to `budget` machines and tallies the halting outputs; returns true
+   * once the census has reached its target. The scanned segment is tracked when
+   * a cell is read, before the move, so a machine that halts at its first
+   * instruction outputs a single cell.
+   */
+  function run(census, budget) {
+    var n = census.states, cap = census.cap, opts = census.opts, slots = census.slots;
+    var write = census.write, move = census.move, next = census.next;
+    var tape = census.tape, touched = census.touched, dig = census.dig;
+    var offset = census.offset, sample = census.mode === 'sample';
+    if (budget > census.target - census.done) budget = census.target - census.done;
+    for (var m = 0; m < budget; m++) {
+      if (sample) for (var r = 0; r < slots; r++) dig[r] = (census.random() * opts) | 0;
+      var state = 0, pos = offset, minPos = offset, maxPos = offset, k = 0, used = 0;
+      for (var step = 0; step < cap; step++) {
+        if (pos < minPos) minPos = pos; else if (pos > maxPos) maxPos = pos;
+        var d = dig[(state << 1) | tape[pos]];
+        tape[pos] = write[d];
+        touched[k++] = pos;
+        pos += move[d];
+        state = next[d];
+        if (state === n) { used = step + 1; break; }
+      }
+      if (used > 0) {
+        census.halting++;
+        if (used > census.maxUsed) census.maxUsed = used;
+        var s = '';
+        for (var p = minPos; p <= maxPos; p++) s += tape[p];
+        census.counts[s] = (census.counts[s] || 0) + 1;
+      }
+      for (var i = 0; i < k; i++) tape[touched[i]] = 0;
+      if (!sample) for (var j = 0; j < slots; j++) { if (++dig[j] < opts) break; dig[j] = 0; }
+    }
+    census.done += budget;
+    return census.done >= census.target;
+  }
+
+  /*
+   * Outputs sorted by frequency (ties: shorter first, then lexicographic, so
+   * the order is the same on every engine) and halting mass per output length.
+   */
+  function summary(census) {
+    var counts = census.counts;
+    var entries = Object.keys(counts).map(function (s) {
+      return { output: s, machines: counts[s] };
+    });
+    entries.sort(function (a, b) {
+      return b.machines - a.machines || a.output.length - b.output.length ||
+        (a.output < b.output ? -1 : 1);
+    });
+    var byLength = [];
+    entries.forEach(function (e) {
+      byLength[e.output.length] = (byLength[e.output.length] || 0) + e.machines;
+    });
+    return { entries: entries, byLength: byLength };
+  }
+
+  return {
+    create: create,
+    run: run,
+    summary: summary,
+    machineCount: machineCount,
+    stepCap: stepCap
+  };
+});
+
+</script>
+<script>
+/*
+ * graph.js: Canvas renderer: ranked bars of the output strings (height = share
+ * of the halting machines, colour = string length) and a bottom strip with the
+ * halting mass per output length. Colours are read from the CSS tokens on every
+ * draw, so the canvas follows the theme.
+ */
+(function (root) {
+  'use strict';
+
+  var MARGIN = { left: 56, right: 18, top: 24 };
+  var STRIP = { top: 30, bottom: 18, height: 110, reserve: 14 };
+  var MIN_BAR = 24;      // px per ranked bar; sets how many strings are shown
+  var FONT = '11px system-ui, sans-serif';
+
+  function CensusGraph(canvas, tooltip) {
+    var self = this;
+    this.canvas = canvas;
+    this.tooltip = tooltip;
+    this.context = canvas.getContext('2d');
+    this.state = null;
+    this.hover = null;
+    canvas.addEventListener('pointermove', function (e) { self.setHover(self.pointAt(e.offsetX, e.offsetY), e); });
+    canvas.addEventListener('pointerdown', function (e) { self.setHover(self.pointAt(e.offsetX, e.offsetY), e); });
+    /* A lifted finger also fires pointerleave: on touch the tooltip stays until the next tap */
+    canvas.addEventListener('pointerleave', function (e) { if (e.pointerType !== 'touch') self.setHover(null); });
+    new ResizeObserver(function () { self.draw(); }).observe(canvas.parentElement);
+  }
+
+  /* state: { census, summary, scale: 'lin'|'log', text: I18n.t } */
+  CensusGraph.prototype.update = function (state) {
+    this.state = state;
+    this.hover = null;
+    this.tooltip.hidden = true;
+    this.draw();
+  };
+
+  CensusGraph.prototype.layout = function () {
+    var box = this.canvas.parentElement, dpr = window.devicePixelRatio || 1;
+    var width = box.clientWidth, height = box.clientHeight;
+    if (this.canvas.width !== Math.round(width * dpr) || this.canvas.height !== Math.round(height * dpr)) {
+      this.canvas.width = Math.round(width * dpr);
+      this.canvas.height = Math.round(height * dpr);
+      this.canvas.style.width = width + 'px';
+      this.canvas.style.height = height + 'px';
+    }
+    this.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var entries = this.state.summary.entries;
+    var available = Math.max(10, width - MARGIN.left - MARGIN.right);
+    this.shownCount = Math.min(entries.length, Math.max(1, Math.floor(available / MIN_BAR)));
+    this.barWidth = available / Math.max(1, this.shownCount);
+    var maxLen = 1;
+    for (var i = 0; i < this.shownCount; i++) if (entries[i].output.length > maxLen) maxLen = entries[i].output.length;
+    this.horizontal = maxLen * 6.6 + 4 <= this.barWidth;
+    var labelZone = this.horizontal ? 18 : Math.min(72, Math.round(maxLen * 6.2 + 12));
+    var stripHeight = Math.min(STRIP.height, Math.round(height * 0.28));
+    var plot = {
+      left: MARGIN.left, top: MARGIN.top, width: available,
+      height: Math.max(30, height - MARGIN.top - labelZone - STRIP.top - stripHeight - STRIP.bottom)
+    };
+    plot.bottom = plot.top + plot.height;
+    this.plot = plot;
+    this.strip = { left: plot.left, top: plot.bottom + labelZone + STRIP.top, width: available, height: stripHeight };
+    this.strip.bottom = this.strip.top + this.strip.height;
+    return { width: width, height: height };
+  };
+
+  function readTheme() {
+    var style = getComputedStyle(document.documentElement);
+    function token(name) { return style.getPropertyValue(name).trim(); }
+    return {
+      bg: token('--bg'), text: token('--text'), muted: token('--muted'), grid: token('--grid'), axis: token('--axis'), accent: token('--accent'),
+      ramp: [1, 2, 3, 4, 5].map(function (i) { return token('--ramp-' + i); })
+    };
+  }
+
+  /* Numbers follow the page language: decimal comma and grouping dots in Italian */
+  function formatNumber(v, options) { return v.toLocaleString(document.documentElement.lang, options); }
+  function formatShare(p) {
+    var v = 100 * p;
+    return formatNumber(v, v >= 0.1 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumSignificantDigits: 2 }) + '%';
+  }
+  function formatCount(n) { return formatNumber(n); }
+  function formatPercentTick(v) { return formatNumber(100 * v, { maximumSignificantDigits: 3 }) + '%'; }
+  function mirrorOf(s) { return s.split('').reverse().join(''); }
+  function complementOf(s) {
+    return s.replace(/[01]/g, function (c) { return c === '0' ? '1' : '0'; });
+  }
+  /* Colour index by string length; lengths of 5 cells and more share the last step */
+  function rampLevel(length) { return Math.min(4, length - 1); }
+
+  CensusGraph.prototype.draw = function () {
+    if (!this.state) return;
+    var size = this.layout();
+    if (size.width < 60 || size.height < 120) return;
+    var theme = readTheme(), ctx = this.context, s = this.state;
+    var entries = s.summary.entries, halting = s.census.halting;
+    var shown = this.shownCount, plot = this.plot, strip = this.strip, barWidth = this.barWidth;
+    ctx.fillStyle = theme.bg;
+    ctx.fillRect(0, 0, size.width, size.height);
+    ctx.font = FONT;
+
+    ctx.fillStyle = theme.text;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(s.text('barTitle', { shown: entries.length ? shown : 0, distinct: entries.length }), plot.left, plot.top - 8);
+    ctx.fillText(s.text('lenTitle'), strip.left, strip.top - 8);
+
+    ctx.strokeStyle = theme.axis;
+    ctx.beginPath();
+    ctx.moveTo(plot.left, plot.bottom + 0.5);
+    ctx.lineTo(plot.left + plot.width, plot.bottom + 0.5);
+    ctx.moveTo(strip.left, strip.bottom + 0.5);
+    ctx.lineTo(strip.left + strip.width, strip.bottom + 0.5);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.fillStyle = theme.muted;
+    ctx.translate(14, plot.top + plot.height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText(s.text('axisShare'), 0, 0);
+    ctx.restore();
+
+    if (!entries.length || !halting) return;
+
+    var maxShare = entries[0].machines / halting;
+    var minShare = entries[shown - 1].machines / halting;
+    var logLo = Math.log(minShare / 2), logHi = Math.log(maxShare);
+    if (logHi - logLo < 1e-9) logLo = logHi - Math.LN10;
+    function yOfShare(share) {
+      var ratio = s.scale === 'log'
+        ? Math.max(0, (Math.log(share) - logLo) / (logHi - logLo))
+        : share / maxShare;
+      return plot.bottom - plot.height * Math.min(1, ratio);
+    }
+
+    /* Grid: percent steps on the linear scale, decades on the log scale */
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    var v, y;
+    if (s.scale === 'log') {
+      for (v = 1; v >= minShare / 2; v /= 10) {
+        if (v > maxShare * 1.0001) continue;
+        y = yOfShare(v);
+        ctx.strokeStyle = theme.grid;
+        ctx.beginPath();
+        ctx.moveTo(plot.left, y + 0.5);
+        ctx.lineTo(plot.left + plot.width, y + 0.5);
+        ctx.stroke();
+        ctx.fillStyle = theme.muted;
+        ctx.fillText(formatPercentTick(v), plot.left - 6, y);
+      }
+    } else {
+      var step = (function () {
+        var candidates = [0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5];
+        for (var i = 0; i < candidates.length; i++) {
+          if (candidates[i] >= maxShare * 26 / plot.height) return candidates[i];
+        }
+        return candidates[candidates.length - 1];
+      })();
+      for (var k = 1; k * step <= maxShare * 1.0001; k++) {
+        y = yOfShare(k * step);
+        ctx.strokeStyle = theme.grid;
+        ctx.beginPath();
+        ctx.moveTo(plot.left, y + 0.5);
+        ctx.lineTo(plot.left + plot.width, y + 0.5);
+        ctx.stroke();
+        ctx.fillStyle = theme.muted;
+        ctx.fillText(formatPercentTick(k * step), plot.left - 6, y);
+      }
+    }
+
+    /* Ranked bars; under the pointer, the mirrored and complemented strings are outlined */
+    var hoverIndex = this.hover ? this.hover.index : -1;
+    var mirrorIndex = -1, complementIndex = -1, i, e;
+    if (hoverIndex >= 0) {
+      var mirror = mirrorOf(entries[hoverIndex].output);
+      var complement = complementOf(entries[hoverIndex].output);
+      for (i = 0; i < shown; i++) {
+        if (i === hoverIndex) continue;
+        if (entries[i].output === mirror) mirrorIndex = i;
+        if (entries[i].output === complement) complementIndex = i;
+      }
+    }
+    for (i = 0; i < shown; i++) {
+      e = entries[i];
+      var x = plot.left + i * barWidth;
+      var top = Math.min(yOfShare(e.machines / halting), plot.bottom - 1);
+      var w = Math.max(1, barWidth - (barWidth > 4 ? 2 : 0));
+      var bx = x + (barWidth - w) / 2;
+      ctx.fillStyle = i === hoverIndex ? theme.accent : theme.ramp[rampLevel(e.output.length)];
+      ctx.fillRect(bx, top, w, plot.bottom - top);
+      if (i === mirrorIndex || i === complementIndex) {
+        ctx.strokeStyle = theme.accent;
+        ctx.lineWidth = 2;
+        if (i === complementIndex && i !== mirrorIndex) ctx.setLineDash([3, 3]);
+        ctx.strokeRect(bx + 1, top + 1, Math.max(1, w - 2), Math.max(1, plot.bottom - top - 2));
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1;
+      }
+      if (barWidth >= 9) {
+        ctx.fillStyle = i === hoverIndex ? theme.accent : theme.muted;
+        if (this.horizontal) {
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(e.output, x + barWidth / 2, plot.bottom + 5);
+        } else {
+          ctx.save();
+          ctx.translate(x + barWidth / 2, plot.bottom + 5);
+          ctx.rotate(Math.PI / 2);
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(e.output, 0, 0);
+          ctx.restore();
+        }
+      }
+    }
+
+    /* Bottom strip: halting mass per output length, share printed above each bar */
+    var byLength = s.summary.byLength, maxL = byLength.length - 1;
+    var maxMass = 0, L;
+    for (L = 1; L <= maxL; L++) if ((byLength[L] || 0) > maxMass) maxMass = byLength[L];
+    if (maxL < 1 || !maxMass) return;
+    var slotWidth = strip.width / maxL;
+    for (L = 1; L <= maxL; L++) {
+      var mass = byLength[L] || 0;
+      var cx = strip.left + (L - 0.5) * slotWidth;
+      var bw = Math.max(2, Math.min(slotWidth * 0.6, 46));
+      var topY = strip.top + STRIP.reserve + (strip.height - STRIP.reserve) * (1 - mass / maxMass);
+      ctx.fillStyle = theme.ramp[rampLevel(L)];
+      ctx.fillRect(cx - bw / 2, topY, bw, strip.bottom - topY);
+      ctx.fillStyle = theme.muted;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      if (slotWidth >= 34 || mass === maxMass) ctx.fillText(formatShare(mass / halting), cx, topY - 2);
+      ctx.textBaseline = 'top';
+      ctx.fillText(String(L), cx, strip.bottom + 4);
+    }
+  };
+
+  CensusGraph.prototype.pointAt = function (px, py) {
+    if (!this.state || !this.plot || !this.shownCount || !this.state.summary.entries.length) return null;
+    var plot = this.plot;
+    if (py < plot.top || py > plot.bottom || px < plot.left) return null;
+    var index = Math.floor((px - plot.left) / this.barWidth);
+    return index >= 0 && index < this.shownCount ? { index: index } : null;
+  };
+
+  CensusGraph.prototype.setHover = function (hover, event) {
+    var previous = this.hover;
+    if (!!hover !== !!previous || (hover && hover.index !== previous.index)) {
+      this.hover = hover;
+      this.draw();
+    }
+    if (!hover) { this.tooltip.hidden = true; return; }
+    this.tooltip.innerHTML = this.describe(hover);
+    this.tooltip.hidden = false;
+    var box = this.canvas.parentElement, left = event.offsetX + 14, top = event.offsetY + 14;
+    if (left + this.tooltip.offsetWidth > box.clientWidth - 4) left = Math.max(4, event.offsetX - 14 - this.tooltip.offsetWidth);
+    if (top + this.tooltip.offsetHeight > box.clientHeight - 4) top = Math.max(4, event.offsetY - 14 - this.tooltip.offsetHeight);
+    this.tooltip.style.left = left + 'px';
+    this.tooltip.style.top = top + 'px';
+  };
+
+  CensusGraph.prototype.describe = function (hover) {
+    var s = this.state, text = s.text, counts = s.census.counts, halting = s.census.halting;
+    var e = s.summary.entries[hover.index];
+    var share = e.machines / halting;
+    function shareOf(other) { return formatShare((counts[other] || 0) / halting); }
+    var rows = [
+      [text('ttShare'), formatShare(share)],
+      [text('ttMachines'), formatCount(e.machines)],
+      [text('ttRank'), hover.index + 1],
+      [text('ttBits'), formatNumber(-Math.log(share) / Math.LN2, { minimumFractionDigits: 2, maximumFractionDigits: 2 })]
+    ];
+    var mirror = mirrorOf(e.output), complement = complementOf(e.output);
+    if (mirror !== e.output) rows.push([text('ttMirror', { s: mirror }), shareOf(mirror)]);
+    if (complement !== e.output && complement !== mirror) rows.push([text('ttComplement', { s: complement }), shareOf(complement)]);
+    return '<b>' + e.output + '</b>' + rows.map(function (r) {
+      return '<div><span>' + r[0] + '</span><span>' + r[1] + '</span></div>';
+    }).join('');
+  };
+
+  CensusGraph.formatShare = formatShare;
+  CensusGraph.formatCount = formatCount;
+  root.CensusGraph = CensusGraph;
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>
+/*
+ * app.js: wires the controls to the census and the renderer. The census runs in
+ * time-boxed requestAnimationFrame slices so the page stays responsive; language
+ * and theme come from the shared overlay (shared/js/settings.js) and the state is
+ * mirrored in the query string so a view can be linked.
+ */
+(function () {
+  'use strict';
+
+  var LIMITS = { states: [2, 4], seed: [0, 99999], samples: [100000, 10000000] };
+  var SLICE_MS = 14;     // work per frame
+  var CHUNK = 20000;     // machines per Model.run call inside a slice
+
+  var els = {};
+  ['play', 'graph', 'tooltip', 'modeNote', 'seed', 'samples', 'samplesNum',
+    'rMachines', 'rHalting', 'rDistinct', 'rLongest', 'rTop'
+  ].forEach(function (id) { els[id] = document.getElementById(id); });
+
+  var formatShare = CensusGraph.formatShare, formatCount = CensusGraph.formatCount;
+  var graph = new CensusGraph(els.graph, els.tooltip);
+  var states = 2, scale = 'lin', census = null, playing = false, rafId = null;
+
+  function clamp(value, limits, fallback) {
+    var v = parseFloat(value);
+    return isNaN(v) ? fallback : Math.min(limits[1], Math.max(limits[0], v));
+  }
+  function setPair(range, num, value) { range.value = value; num.value = value; }
+  function isDone() { return census.done >= census.target; }
+
+  function setStates(value) {
+    states = value;
+    document.querySelectorAll('[data-states]').forEach(function (b) {
+      b.classList.toggle('active', +b.dataset.states === states);
+      b.setAttribute('aria-pressed', +b.dataset.states === states);
+    });
+    var sampled = states === 4;
+    els.seed.disabled = !sampled;
+    els.samples.disabled = !sampled;
+    els.samplesNum.disabled = !sampled;
+    els.modeNote.textContent = I18n.t(sampled ? 'modeNoteSample' : 'modeNoteFull', {
+      total: Model.machineCount(states).toLocaleString(document.documentElement.lang),
+      n: states,
+      cap: Model.stepCap(states)
+    });
+  }
+
+  function setScale(value) {
+    scale = value;
+    document.querySelectorAll('[data-scale]').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.scale === scale);
+      b.setAttribute('aria-pressed', b.dataset.scale === scale);
+    });
+  }
+
+  function syncPlay() {
+    var done = isDone();
+    els.play.dataset.i18n = done ? 'done' : (playing ? 'pause' : 'play');
+    els.play.textContent = I18n.t(els.play.dataset.i18n);
+    els.play.disabled = done;
+  }
+
+  function refresh() {
+    var s = Model.summary(census);
+    graph.update({ census: census, summary: s, scale: scale, text: I18n.t });
+    els.rMachines.textContent = formatCount(census.done) + ' / ' + formatCount(census.target);
+    els.rHalting.textContent = census.done
+      ? formatCount(census.halting) + ' (' + formatShare(census.halting / census.done) + ')' : '0';
+    els.rDistinct.textContent = formatCount(s.entries.length);
+    els.rLongest.textContent = census.maxUsed + ' / ' + census.cap;
+    els.rTop.textContent = s.entries.length ? s.entries[0].output : '';
+  }
+
+  function frame() {
+    rafId = null;
+    var t0 = performance.now(), finished = isDone();
+    while (!finished && performance.now() - t0 < SLICE_MS) finished = Model.run(census, CHUNK);
+    refresh();
+    if (finished) { playing = false; syncPlay(); return; }
+    if (playing) rafId = requestAnimationFrame(frame);
+  }
+
+  function setPlaying(on) {
+    playing = on && !isDone();
+    if (playing && rafId === null) rafId = requestAnimationFrame(frame);
+    if (!playing && rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    syncPlay();
+  }
+
+  function rebuild() {
+    if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    census = Model.create({ states: states, seed: +els.seed.value, samples: +els.samples.value });
+    playing = false;
+    refresh();
+    setPlaying(true);
+  }
+
+  function updateUrl() {
+    var q = new URLSearchParams({
+      n: states, seed: els.seed.value, samples: els.samples.value, scale: scale, lang: I18n.getLanguage()
+    });
+    try { history.replaceState(null, '', '?' + q); } catch (e) { /* not allowed on some file:// setups */ }
+  }
+
+  function bindPair(range, num, onChange) {
+    range.addEventListener('input', function () { num.value = range.value; onChange(); });
+    num.addEventListener('input', function () {
+      var v = parseFloat(num.value);
+      if (isNaN(v)) return;
+      range.value = Math.min(parseFloat(range.max), Math.max(parseFloat(range.min), v));
+      onChange();
+    });
+  }
+
+  /* Initial state: query string, then defaults; a change of language or theme redraws everything */
+  var qs = new URLSearchParams(location.search);
+  Settings.init(function () { setStates(states); syncPlay(); refresh(); updateUrl(); });
+  els.seed.value = clamp(qs.get('seed'), LIMITS.seed, 1);
+  setPair(els.samples, els.samplesNum, clamp(qs.get('samples'), LIMITS.samples, 1000000));
+  setScale(qs.get('scale') === 'log' ? 'log' : 'lin');
+  setStates(Math.round(clamp(qs.get('n'), LIMITS.states, 2)));
+  rebuild();
+  updateUrl();
+
+  document.querySelectorAll('[data-states]').forEach(function (b) {
+    b.addEventListener('click', function () { setStates(+b.dataset.states); rebuild(); updateUrl(); });
+  });
+  document.querySelectorAll('[data-scale]').forEach(function (b) {
+    b.addEventListener('click', function () { setScale(b.dataset.scale); refresh(); updateUrl(); });
+  });
+  els.seed.addEventListener('input', function () {
+    if (isNaN(parseFloat(els.seed.value))) return;
+    rebuild();
+    updateUrl();
+  });
+  bindPair(els.samples, els.samplesNum, function () { rebuild(); updateUrl(); });
+  els.play.addEventListener('click', function () { setPlaying(!playing); });
+})();
+
+</script>
+</body>
+</html>

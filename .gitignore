@@ -1,0 +1,28 @@
+# OS and editors
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.idea/
+.vscode/
+
+# Local secrets, never committed
+.env
+.env.*
+*.key
+*.pem
+
+# Logs and temporary files
+*.log
+*.tmp
+tmp/
+
+# Node, only used to run the numerical checks
+node_modules/
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Local browser automation logs
+.playwright-mcp/
